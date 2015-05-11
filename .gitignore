@@ -1,0 +1,6 @@
+BepuFluid/obj/x86/Debug/cachefile-{040CF7AD-F618-4D1D-8853-322AFC0D8131}-targetpath.txt
+BepuFluid/BepuFluid.csproj.Debug.cachefile
+*.user
+BepuFluid/bin/*
+BepuFluid/obj/*
+BepuFluidContent/obj/x86/Debug/DesignTimeResolveAssemblyReferencesInput.cache
