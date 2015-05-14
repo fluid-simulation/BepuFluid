@@ -58,7 +58,7 @@ namespace BepuFluid
         /// </summary>
         protected override void Initialize()
         {
-            Camera = new Camera(this, new Vector3(0, 3, 10), 5);
+            Camera = new Camera(this, new Vector3(0, 3, -5), 5);
 
             InitializeSpace();
 
@@ -80,7 +80,7 @@ namespace BepuFluid
             AddThrough();
 
             // Emitter
-            Vector3 emitterPos = new Vector3(-2.5f, 15, 8);
+            Vector3 emitterPos = new Vector3(-2.5f, 15, 28);
             Box emitterBox = new Box(emitterPos, 3, 3, 3);
             Emitter = new Emitter(space, emitterPos, emitterBox, Vector3.UnitZ * -1);
         }
@@ -116,8 +116,12 @@ namespace BepuFluid
 
         private void AddThrough()
         {
-            Vector3 center = new Vector3(0, 10, 0);
-            Through through = new Through(center, 10, 20, 0, 100);
+            Vector3 center = new Vector3(0, 10, 20);
+            int width = 10;
+            int length = 20;
+            int angleX = 0;
+            int angleZ = 100;
+            Through through = new Through(center, width, length, angleX, angleZ);
             space.Add(through.Box1);
             space.Add(through.Box2);
         }
@@ -150,18 +154,20 @@ namespace BepuFluid
 
             if (MouseState.LeftButton == ButtonState.Pressed)
             {
+                for (int i = 0; i < 1; ++i)
                 Emit();
             }
 
             //Steps the simulation forward one time step.
             space.Update();
-
+            Emitter.Update();
             base.Update(gameTime);
         }
         private void Emit()
         {
             var particle = Emitter.EmitParticle();
-            Components.Add(new EntityModel(particle, SphereModel, Matrix.Identity, this));
+            var scaleMatrix = Matrix.CreateScale(particle.Radius);
+            Components.Add(new EntityModel(particle, SphereModel, scaleMatrix, this));
         }
 
         /// <summary>

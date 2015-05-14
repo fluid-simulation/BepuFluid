@@ -81,6 +81,8 @@ namespace BepuFluid
             Speed = speed;
             ProjectionMatrix = Matrix.CreatePerspectiveFieldOfViewRH(MathHelper.PiOver4, 4f / 3f, .1f, 10000.0f);
             Mouse.SetPosition(200, 200);
+
+            Yaw += 600;
         }
 
         /// <summary>
