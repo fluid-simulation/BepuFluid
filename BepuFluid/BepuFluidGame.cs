@@ -79,6 +79,9 @@ namespace BepuFluid
             // rynna
             AddThrough();
 
+            // boundary box
+            AddBoundaryBox();
+
             // Emitter
             Vector3 emitterPos = new Vector3(-2.5f, 15, 28);
             Box emitterBox = new Box(emitterPos, 3, 3, 3);
@@ -126,6 +129,29 @@ namespace BepuFluid
             space.Add(through.Box2);
         }
 
+        private void AddBoundaryBox()
+        {
+            float width = 20;
+            float height = 3;
+            float length = 0.1f;
+            Vector3 center = new Vector3(0, 0, 7);
+            Box box1 = new Box(center, width, height, length);
+            center.Z += 8;
+            Box box2 = new Box(center, width, height, length);
+
+            center.Z -= 3;
+            length = 10;
+            width = 0.1f;
+            Box box3 = new Box(center, width, height, length);
+            center.X -= 5;
+            Box box4 = new Box(center, width, height, length);
+            
+            space.Add(box1);
+            space.Add(box2);
+            space.Add(box3);
+            space.Add(box4);
+        }
+
         /// <summary>
         /// UnloadContent will be called once per game and is the place to unload
         /// all content.
@@ -160,7 +186,7 @@ namespace BepuFluid
 
             //Steps the simulation forward one time step.
             space.Update();
-            Emitter.Update();
+            //Emitter.Update();
             base.Update(gameTime);
         }
         private void Emit()

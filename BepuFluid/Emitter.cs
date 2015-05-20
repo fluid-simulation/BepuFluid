@@ -3,6 +3,8 @@ using System.Collections.Generic;
 using System.Linq;
 using System.Text;
 using BEPUphysics;
+using BEPUphysics.BroadPhaseEntries;
+using BEPUphysics.BroadPhaseEntries.MobileCollidables;
 using BEPUphysics.Entities;
 using BEPUphysics.Entities.Prefabs;
 using BEPUutilities;
@@ -20,36 +22,108 @@ namespace BepuFluid
         private Space _space;
         private List<Particle> _particles = new List<Particle>();
 
+        #region Forces Fields
+        private static float H = 1f;
+        private static float _pressureScale = 0.1f;
+        private static float _viscosityScale = 0.001f;
+        private static float _tensionScale = 10f;
+        #endregion
+
         public void Update()
         {
-            var particles = _space.Entities.Where(e => (string)e.Tag == "particle").ToArray();
-            Entity par1, par2;
-            for (int i = 0; i < particles.Length; ++i)
+            Particle par1, par2;
+            Vector3 [] tensionForceParts = new Vector3 [_particles.Count];
+            for (int i = 0; i < _particles.Count; ++i)
             {
-                par1 = particles[i];
-                for (int j = 0; j < particles.Length; j++)
+                Vector3 tensionForcePart = Vector3.Zero;
+                par1 = _particles[i];
+                for (int j = 0; j < _particles.Count; j++)
                 {
                     if (i == j)
                         continue;
-                    par2 = particles[j];
-                    ComputePressure(par1, par2);
+                    par2 = _particles[j];
+                    tensionForcePart += GetTensionPart(par1, par2);
+                }
+                tensionForceParts[i] = tensionForcePart;
+            }
+            for (int i = 0; i < _particles.Count; ++i)
+            {
+                par1 = _particles[i];
+                for (int j = 0; j < _particles.Count; j++)
+                {
+                    if (i == j)
+                        continue;
+                    par1.LinearVelocity += -_tensionScale * par1.Mass * (tensionForceParts[i] - tensionForceParts[j]);
                 }
             }
-            foreach (var par in particles.Where(p => p.Position.Y < -10))
-            {
-                _space.Remove(par);
-            }
+        }
+
+        private Vector3 GetTensionPart(Entity par1, Entity par2)
+        {
+            var distanceVector = par1.Position - par2.Position;
+            var distance = Vector3.Distance(par1.Position, par2.Position);
+            if (distance > H)
+                return Vector3.Zero;
+
+            float forceX = (float)(-3 * distanceVector.X * distance - distanceVector.X / (2 * Math.Pow(distance, 3)) + 2 * distanceVector.X);
+            float forceY = (float)(-3 * distanceVector.Y * distance - distanceVector.Y / (2 * Math.Pow(distance, 3)) + 2 * distanceVector.Y);
+            float forceZ = (float)(-3 * distanceVector.Z * distance - distanceVector.Z / (2 * Math.Pow(distance, 3)) + 2 * distanceVector.Z);
+            var forceVector = new Vector3(forceX, forceY, forceZ);
+            forceVector = forceVector * par2.Mass;
+            return forceVector;
+        }
+
+        private void ComputeForces(Entity par1, Entity par2)
+        {
+            ComputeViscosity(par1, par2);
+            ComputePressure(par1, par2);
+
         }
 
         private void ComputePressure(Entity par1, Entity par2)
         {
             var distanceVector = par1.Position - par2.Position;
             var distance = Vector3.Distance(par1.Position, par2.Position);
-            if (distance > 1)
+            if (distance > H)
                 return;
 
-            var forceX = -3 * distanceVector.X * distance - distanceVector.X / (2* Math.Pow(distance, 3)) + 2 * distanceVector.X;
-            par1.LinearVelocity = new Vector3((float)-forceX * 0.01f, 0, 0) + par1.LinearVelocity;
+            float forceX = (float)(-3 * distanceVector.X * distance - distanceVector.X / (2* Math.Pow(distance, 3)) + 2 * distanceVector.X);
+            float forceY = (float)(-3 * distanceVector.Y * distance - distanceVector.Y / (2 * Math.Pow(distance, 3)) + 2 * distanceVector.Y);
+            float forceZ = (float)(-3 * distanceVector.Z * distance - distanceVector.Z / (2 * Math.Pow(distance, 3)) + 2 * distanceVector.Z);
+            var forceVector = new Vector3(forceX, forceY, forceZ);
+            forceVector = forceVector * -_pressureScale * par2.Mass;
+            par1.LinearVelocity = par1.LinearVelocity + forceVector;
+        }
+
+        private void ComputeViscosity(Entity par1, Entity par2)
+        {
+            var distanceVector = par1.Position - par2.Position;
+            var distance = Vector3.Distance(par1.Position, par2.Position);
+            if (distance > H)
+                return;
+
+            // dv * (h - r) = dv * (second gradient of W(dr))
+            float forceX = (par2.LinearVelocity.X - par1.LinearVelocity.X) * (H - distanceVector.X);
+            float forceY = (par2.LinearVelocity.Y - par1.LinearVelocity.Y) * (H - distanceVector.Y);
+            float forceZ = (par2.LinearVelocity.Z - par1.LinearVelocity.Z) * (H - distanceVector.Z);
+            var forceVector = new Vector3(forceX, forceY, forceZ);
+            forceVector = forceVector * _viscosityScale * par2.Mass;
+            par1.LinearVelocity = par1.LinearVelocity + forceVector;
+        }
+
+        private void ComputeTension(Entity par1, Entity par2)
+        {
+            var distanceVector = par1.Position - par2.Position;
+            var distance = Vector3.Distance(par1.Position, par2.Position);
+            if (distance > H)
+                return;
+
+            float forceX = (float)(-3 * distanceVector.X * distance - distanceVector.X / (2 * Math.Pow(distance, 3)) + 2 * distanceVector.X);
+            float forceY = (float)(-3 * distanceVector.Y * distance - distanceVector.Y / (2 * Math.Pow(distance, 3)) + 2 * distanceVector.Y);
+            float forceZ = (float)(-3 * distanceVector.Z * distance - distanceVector.Z / (2 * Math.Pow(distance, 3)) + 2 * distanceVector.Z);
+            var forceVector = new Vector3(forceX, forceY, forceZ);
+            forceVector = forceVector * -_tensionScale * par2.Mass;
+            par1.LinearVelocity = par1.LinearVelocity + forceVector;
         }
 
         public Particle EmitParticle()
@@ -61,7 +135,14 @@ namespace BepuFluid
             _space.Add(particle);
             _particles.Add(particle);
 
+            particle.CollisionInformation.Events.PairCreated += Events_PairCreated;
+
             return particle;
+        }
+
+        void Events_PairCreated(BEPUphysics.BroadPhaseEntries.MobileCollidables.EntityCollidable sender, BEPUphysics.BroadPhaseEntries.BroadPhaseEntry other, BEPUphysics.NarrowPhaseSystems.Pairs.NarrowPhasePair pair)
+        {
+            ComputeForces(sender.Entity, ((EntityCollidable)other).Entity);
         }
 
         public Emitter(Space space, Vector3 pos, Box box, Vector3 forward)
