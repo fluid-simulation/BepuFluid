@@ -12,7 +12,7 @@ using Microsoft.Xna.Framework.Graphics;
 
 namespace BepuFluid
 {
-    class Emitter
+    class ParticleManager
     {
         public Box Box { get; private set; }
         public Vector3 Position { get; private set; }
@@ -25,7 +25,7 @@ namespace BepuFluid
         #region Forces Fields
         private static float H = 1f;
         private static float _pressureScale = 0.1f;
-        private static float _viscosityScale = 0.001f;
+        private static float _viscosityScale = 0.01f;
         private static float _tensionScale = 10f;
         #endregion
 
@@ -44,8 +44,10 @@ namespace BepuFluid
                     par2 = _particles[j];
                     tensionForcePart += GetTensionPart(par1, par2);
                 }
+                par1.TensionPartForce = tensionForcePart;
                 tensionForceParts[i] = tensionForcePart;
             }
+            /*
             for (int i = 0; i < _particles.Count; ++i)
             {
                 par1 = _particles[i];
@@ -55,7 +57,7 @@ namespace BepuFluid
                         continue;
                     par1.LinearVelocity += -_tensionScale * par1.Mass * (tensionForceParts[i] - tensionForceParts[j]);
                 }
-            }
+            }*/
         }
 
         private Vector3 GetTensionPart(Entity par1, Entity par2)
@@ -78,6 +80,7 @@ namespace BepuFluid
             ComputeViscosity(par1, par2);
             ComputePressure(par1, par2);
 
+            //ApplyTension(par1, par2);
         }
 
         private void ComputePressure(Entity par1, Entity par2)
@@ -111,6 +114,24 @@ namespace BepuFluid
             par1.LinearVelocity = par1.LinearVelocity + forceVector;
         }
 
+        /// <summary>
+        /// Applies previously calculated tension forces to Entities, 
+        /// if they can be cast to a Particle.
+        /// </summary>
+        /// <param name="par1"></param>
+        /// <param name="par2"></param>
+        private void ApplyTension(Entity par1, Entity par2)
+        {
+            Particle p1 = par1 as Particle;
+            Particle p2 = par2 as Particle;
+
+            // Check if both entities are a Particle
+            if (p1 != null && p2 != null)
+            {
+                p1.LinearVelocity += -_tensionScale * p1.Mass * (p1.TensionPartForce - p2.TensionPartForce);
+            }
+        }
+
         private void ComputeTension(Entity par1, Entity par2)
         {
             var distanceVector = par1.Position - par2.Position;
@@ -124,6 +145,11 @@ namespace BepuFluid
             var forceVector = new Vector3(forceX, forceY, forceZ);
             forceVector = forceVector * -_tensionScale * par2.Mass;
             par1.LinearVelocity = par1.LinearVelocity + forceVector;
+        }
+
+        void Events_PairCreated(BEPUphysics.BroadPhaseEntries.MobileCollidables.EntityCollidable sender, BEPUphysics.BroadPhaseEntries.BroadPhaseEntry other, BEPUphysics.NarrowPhaseSystems.Pairs.NarrowPhasePair pair)
+        {
+            ComputeForces(sender.Entity, ((EntityCollidable)other).Entity);
         }
 
         public Particle EmitParticle()
@@ -140,12 +166,7 @@ namespace BepuFluid
             return particle;
         }
 
-        void Events_PairCreated(BEPUphysics.BroadPhaseEntries.MobileCollidables.EntityCollidable sender, BEPUphysics.BroadPhaseEntries.BroadPhaseEntry other, BEPUphysics.NarrowPhaseSystems.Pairs.NarrowPhasePair pair)
-        {
-            ComputeForces(sender.Entity, ((EntityCollidable)other).Entity);
-        }
-
-        public Emitter(Space space, Vector3 pos, Box box, Vector3 forward)
+        public ParticleManager(Space space, Vector3 pos, Box box, Vector3 forward)
         {
             this._space = space;
             this.Position = pos;

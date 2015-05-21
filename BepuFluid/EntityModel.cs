@@ -21,6 +21,10 @@ namespace BepuFluid
         public Matrix Transform;
         Matrix[] boneTransforms;
 
+        /// <summary>
+        /// If true, draws the model with opacity.
+        /// </summary>
+        public bool IsOpaque { get; set; }
 
         /// <summary>
         /// Creates a new EntityModel.
@@ -55,7 +59,7 @@ namespace BepuFluid
             //and translation of the entity combined.
             //There are a variety of properties available in the entity, try looking around
             //in the list to familiarize yourself with it.
-            var worldMatrix = Transform *  MathConverter.Convert(entity.WorldTransform);
+            var worldMatrix = Transform * MathConverter.Convert(entity.WorldTransform);
 
 
             model.CopyAbsoluteBoneTransformsTo(boneTransforms);
@@ -66,6 +70,14 @@ namespace BepuFluid
                     effect.World = boneTransforms[mesh.ParentBone.Index] * worldMatrix;
                     effect.View = MathConverter.Convert((Game as BepuFluidGame).Camera.ViewMatrix);
                     effect.Projection = MathConverter.Convert((Game as BepuFluidGame).Camera.ProjectionMatrix);
+
+                    if (this.IsOpaque || true)
+                    {
+                        effect.GraphicsDevice.DepthStencilState = DepthStencilState.Default;
+
+                        effect.GraphicsDevice.BlendState = BlendState.AlphaBlend;
+                        effect.Alpha = 1.0f;
+                    }
                 }
                 mesh.Draw();
             }

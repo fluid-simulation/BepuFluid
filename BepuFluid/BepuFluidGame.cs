@@ -28,7 +28,7 @@ namespace BepuFluid
         /// Controls the viewpoint and how the user can see the world.
         /// </summary>
         public Camera Camera;
-
+        
         /// <summary>
         /// Contains the latest snapshot of the keyboard's input state.
         /// </summary>
@@ -39,7 +39,7 @@ namespace BepuFluid
         public MouseState MouseState;
 
         #region Particles
-        private Emitter Emitter;
+        private ParticleManager Emitter;
         #endregion
 
         public BepuFluidGame()
@@ -85,7 +85,7 @@ namespace BepuFluid
             // Emitter
             Vector3 emitterPos = new Vector3(-2.5f, 15, 28);
             Box emitterBox = new Box(emitterPos, 3, 3, 3);
-            Emitter = new Emitter(space, emitterPos, emitterBox, Vector3.UnitZ * -1);
+            Emitter = new ParticleManager(space, emitterPos, emitterBox, Vector3.UnitZ * -1);
         }
 
         /// <summary>
@@ -108,10 +108,11 @@ namespace BepuFluid
                 Box box = e as Box;
                 if (box != null) //This won't create any graphics for an entity that isn't a box since the model being used is a box.
                 {
-
                     Matrix scaling = Matrix.CreateScale(box.Width, box.Height, box.Length); //Since the cube model is 1x1x1, it needs to be scaled to match the size of each individual box.
                     //Add the drawable game component for this entity to the game.
-                    Components.Add(new EntityModel(e, CubeModel, scaling, this));
+                    var model = new EntityModel(e, CubeModel, scaling, this);
+                    model.IsOpaque = true;
+                    Components.Add(model);
                 }
             }
 
@@ -207,6 +208,59 @@ namespace BepuFluid
             // TODO: Add your drawing code here
 
             base.Draw(gameTime);
+            DrawMarchingCubes();
+        }
+
+        private double[, ,] GetGData()
+        {
+            if (gData == null)
+            {
+                var rand = new System.Random();
+                double[, ,] gdata = new double[10, 10, 10];
+                for (int x = 0; x < 10; ++x)
+                {
+                    for (int y = 0; y < 10; ++y)
+                    {
+                        for (int z = 0; z < 10; ++z)
+                        {
+                            gdata[x, y, z] = rand.NextDouble();
+                        }
+                    }
+                }
+                gData = gdata;
+            }
+
+            return gData;
+        }
+        double[, ,] gData;
+        private void DrawMarchingCubes()
+        {
+            var gdata = GetGData();
+
+            MarchingCubes.MarchingCubes.Poligonizator.Init(9, gdata, this.GraphicsDevice);
+            var primitive = MarchingCubes.MarchingCubes.Poligonizator.Process(this.GraphicsDevice, 0.6);
+
+           // Matrix world = BepuToXnaMatrix(Camera.WorldMatrix);
+            Matrix view = BepuToXnaMatrix(Camera.ViewMatrix);
+            Matrix projection = BepuToXnaMatrix(Camera.ProjectionMatrix);
+
+            Matrix world = Matrix.CreateTranslation(0, 0, 0);
+           //Matrix view = Matrix.CreateLookAt(new Vector3(0, 0, 3), new Vector3(0, 0, 0), new Vector3(0, 1, 0));
+           //Matrix projection = Matrix.CreatePerspectiveFieldOfView(MathHelper.ToRadians(45), 800f / 480f, 0.01f, 100f);
+
+            if (primitive.VertexCount > 0)
+            {
+                primitive.InitializePrimitive(this.GraphicsDevice);
+                primitive.Draw(world, view, projection, Color.Red);
+            }
+
+        }
+
+        private Microsoft.Xna.Framework.Matrix BepuToXnaMatrix(BEPUutilities.Matrix m)
+        {
+            Matrix res = new Matrix(m.M11, m.M12, m.M13, m.M14, m.M21, m.M22, m.M23, m.M24,
+                m.M31, m.M32, m.M33, m.M34, m.M41, m.M42, m.M43, m.M44);
+            return res;
         }
     }
 }

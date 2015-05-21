@@ -9,6 +9,8 @@ namespace BepuFluid
 {
     class Particle : Sphere
     {
+        public Vector3 TensionPartForce { get; set; }
+
         public Particle(Vector3 position, float radius, float mass) : base(position, radius, mass) { this.Tag = "particle"; }
     }
 }
