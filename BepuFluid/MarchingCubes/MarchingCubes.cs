@@ -7,15 +7,13 @@ using Microsoft.Xna.Framework.Graphics;
 
 namespace BepuFluid.MarchingCubes
 {
-    class MarchingCubes
+    public static class Poligonizator
     {
-        public static class Poligonizator
-        {
-            //Determine the index into the edge table which
-            //tells us which vertices are inside of the surface
-            //Пара таблиц, по ним определяем конфигурацию треугольников=)
-            #region tables
-            static int[] _edgeTable = new int[256]{
+        //Determine the index into the edge table which
+        //tells us which vertices are inside of the surface
+        //Пара таблиц, по ним определяем конфигурацию треугольников=)
+        #region tables
+        static int[] _edgeTable = new int[256]{
             0x0  , 0x109, 0x203, 0x30a, 0x406, 0x50f, 0x605, 0x70c,
             0x80c, 0x905, 0xa0f, 0xb06, 0xc0a, 0xd03, 0xe09, 0xf00,
             0x190, 0x99 , 0x393, 0x29a, 0x596, 0x49f, 0x795, 0x69c,
@@ -50,7 +48,7 @@ namespace BepuFluid.MarchingCubes
             0x70c, 0x605, 0x50f, 0x406, 0x30a, 0x203, 0x109, 0x0
         };
 
-            static int[,] _triTable = new int[256, 16]
+        static int[,] _triTable = new int[256, 16]
         {{-1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1},
         {0, 8, 3, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1},
         {0, 1, 9, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1},
@@ -308,213 +306,212 @@ namespace BepuFluid.MarchingCubes
         {0, 3, 8, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1},
         {-1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1}
         };
-            #endregion
+        #endregion
 
- 
 
-            //Здесь лежат ячейки с координатами вершин
-            private static GridCell[, ,] _grids;
-            //А тут будут хранится треугольники сгенерированные для каждой ячейки
-            private static Triangle[] _triangles;
-            //количество ячеек по каждой оси
-            private static int _size;
-            //Здесь лежат значения(полученные с помощью шума)
-            public static double[, ,] Gdata { get; set; }
 
-            private static GraphicsDevice _graphicsDevice;
+        //Здесь лежат ячейки с координатами вершин
+        private static GridCell[, ,] _grids;
+        //А тут будут хранится треугольники сгенерированные для каждой ячейки
+        private static Triangle[] _triangles;
+        //количество ячеек по каждой оси
+        private static int _size;
+        //Здесь лежат значения(полученные с помощью шума)
+        public static double[, ,] Gdata { get; set; }
 
-            //Подготавливаем _grids, _triangles и тд
-            public static void Init(int size, GraphicsDevice graphicsDevice)
+        private static GraphicsDevice _graphicsDevice;
+
+        //Подготавливаем _grids, _triangles и тд
+        public static void Init(int size, GraphicsDevice graphicsDevice)
+        {
+            _graphicsDevice = graphicsDevice;
+            _size = size;
+            _grids = new GridCell[size, size, size];
+            for (int i = 0; i < size; i++)
+                for (int j = 0; j < size; j++)
+                    for (int k = 0; k < size; k++)
+                    {
+                        _grids[i, j, k].P = new Vector3[8];
+                        _grids[i, j, k].P[0] = new Vector3(i, j, k);
+                        _grids[i, j, k].P[1] = new Vector3(i + 1, j, k);
+                        _grids[i, j, k].P[2] = new Vector3(i + 1, j + 1, k);
+                        _grids[i, j, k].P[3] = new Vector3(i, j + 1, k);
+                        _grids[i, j, k].P[4] = new Vector3(i, j, k + 1);
+                        _grids[i, j, k].P[5] = new Vector3(i + 1, j, k + 1);
+                        _grids[i, j, k].P[6] = new Vector3(i + 1, j + 1, k + 1);
+                        _grids[i, j, k].P[7] = new Vector3(i, j + 1, k + 1);
+                    }
+            _triangles = new Triangle[16];
+            for (int i = 0; i < 16; i++)
             {
-                _graphicsDevice = graphicsDevice;
-                _size = size;
-                _grids = new GridCell[size, size, size];
-                for (int i = 0; i < size; i++)
-                    for (int j = 0; j < size; j++)
-                        for (int k = 0; k < size; k++)
+                _triangles[i].P = new Vector3[3];
+            }
+        }
+        public static void Init(int size, double[, ,] gdata, GraphicsDevice graphicsDevice)
+        {
+            Init(size, graphicsDevice);
+            Gdata = gdata;
+        }
+
+        //для удобства и избежания лишних расчетов и выделения памяти;)
+        private static double GetVal(int x, int y, int z, int i)
+        {
+            switch (i)
+            {
+                case 0:
+                    return Gdata[x, y, z];
+                case 1:
+                    return Gdata[x + 1, y, z];
+                case 2:
+                    return Gdata[x + 1, y + 1, z];
+                case 3:
+                    return Gdata[x, y + 1, z];
+                case 4:
+                    return Gdata[x, y, z + 1];
+                case 5:
+                    return Gdata[x + 1, y, z + 1];
+                case 6:
+                    return Gdata[x + 1, y + 1, z + 1];
+                case 7:
+                    return Gdata[x, y + 1, z + 1];
+            }
+            return 0;
+        }
+        private static Vector3 GetPos(int x, int y, int z, int i)
+        {
+            return _grids[x, y, z].P[i];
+        }
+
+        public static GeometricPrimitive Process(GraphicsDevice graphicsDevice, double isolevel)
+        {
+            var res = new CubePrimitive();
+            Process(graphicsDevice, isolevel, ref res);
+            return res;
+        }
+        //Здесь происходит вся работа. MarchCubesPrimitive - реализация GeometricPrimitive из примера XNA. isolevel - уровень на изоповерхности.
+        public static void Process(GraphicsDevice graphicsDevice, double isolevel, ref CubePrimitive primitive)
+        {
+            //Очищаем буферы вершин и индексов
+            //primitive.Clear();
+            int triNum = 0;
+            for (int i = 0; i < _size; i++)
+                for (int j = 0; j < _size; j++)
+                    for (int k = 0; k < _size; k++)
+                    {
+                        //Заполняем _triangles и получаем количество треугольников
+                        triNum = Polygonise(i, j, k, isolevel);
+                        if (triNum > 0)
                         {
-                            _grids[i, j, k].P = new Vector3[8];
-                            _grids[i, j, k].P[0] = new Vector3(i, j, k);
-                            _grids[i, j, k].P[1] = new Vector3(i + 1, j, k);
-                            _grids[i, j, k].P[2] = new Vector3(i + 1, j + 1, k);
-                            _grids[i, j, k].P[3] = new Vector3(i, j + 1, k);
-                            _grids[i, j, k].P[4] = new Vector3(i, j, k + 1);
-                            _grids[i, j, k].P[5] = new Vector3(i + 1, j, k + 1);
-                            _grids[i, j, k].P[6] = new Vector3(i + 1, j + 1, k + 1);
-                            _grids[i, j, k].P[7] = new Vector3(i, j + 1, k + 1);
+                            Build(ref primitive, triNum);//А здесь заполняем буферы
                         }
-                _triangles = new Triangle[16];
-                for (int i = 0; i < 16; i++)
-                {
-                    _triangles[i].P = new Vector3[3];
-                }
-            }
-            public static void Init(int size, double[, ,] gdata, GraphicsDevice graphicsDevice)
-            {
-                Init(size, graphicsDevice);
-                Gdata = gdata;
-            }
+                    }
+            if (primitive.CurrentVertex == 0) primitive.isDrawable = false;
+            else primitive.InitializePrimitive(graphicsDevice);
+        }
 
-            //для удобства и избежания лишних расчетов и выделения памяти;)
-            private static double GetVal(int x, int y, int z, int i)
-            {
-                switch (i)
-                {
-                    case 0:
-                        return Gdata[x, y, z];
-                    case 1:
-                        return Gdata[x + 1, y, z];
-                    case 2:
-                        return Gdata[x + 1, y + 1, z];
-                    case 3:
-                        return Gdata[x, y + 1, z];
-                    case 4:
-                        return Gdata[x, y, z + 1];
-                    case 5:
-                        return Gdata[x + 1, y, z + 1];
-                    case 6:
-                        return Gdata[x + 1, y + 1, z + 1];
-                    case 7:
-                        return Gdata[x, y + 1, z + 1];
-                }
+        static int Polygonise(int x, int y, int z, double isolevel)
+        {
+            var vertlist = new Vector3[12];
+            int i, ntriang = 0;
+            byte cubeindex = 0;
+            //Определяем какой куб перед нами(фактически индекс в таблице)
+            if (GetVal(x, y, z, 0) > isolevel) cubeindex |= 1;
+            if (GetVal(x, y, z, 1) > isolevel) cubeindex |= 2;
+            if (GetVal(x, y, z, 2) > isolevel) cubeindex |= 4;
+            if (GetVal(x, y, z, 3) > isolevel) cubeindex |= 8;
+            if (GetVal(x, y, z, 4) > isolevel) cubeindex |= 16;
+            if (GetVal(x, y, z, 5) > isolevel) cubeindex |= 32;
+            if (GetVal(x, y, z, 6) > isolevel) cubeindex |= 64;
+            if (GetVal(x, y, z, 7) > isolevel) cubeindex |= 128;
+
+            /* Cube is entirely in/out of the surface */
+            if (_edgeTable[cubeindex] == 0)
                 return 0;
-            }
-            private static Vector3 GetPos(int x, int y, int z, int i)
+
+            //Ищем конкретные положения вершин, используя линейную интерполяцию
+            /* Find the vertices where the surface intersects the cube */
+            if ((_edgeTable[cubeindex] & 1) > 0)
+                vertlist[0] = VertexInterp(isolevel, GetPos(x, y, z, 0), GetPos(x, y, z, 1), GetVal(x, y, z, 0), GetVal(x, y, z, 1));
+            if ((_edgeTable[cubeindex] & 2) > 0)
+                vertlist[1] =
+                   VertexInterp(isolevel, GetPos(x, y, z, 1), GetPos(x, y, z, 2), GetVal(x, y, z, 1), GetVal(x, y, z, 2));
+            if ((_edgeTable[cubeindex] & 4) > 0)
+                vertlist[2] =
+                   VertexInterp(isolevel, GetPos(x, y, z, 2), GetPos(x, y, z, 3), GetVal(x, y, z, 2), GetVal(x, y, z, 3));
+            if ((_edgeTable[cubeindex] & 8) > 0)
+                vertlist[3] =
+                   VertexInterp(isolevel, GetPos(x, y, z, 3), GetPos(x, y, z, 0), GetVal(x, y, z, 3), GetVal(x, y, z, 0));
+            if ((_edgeTable[cubeindex] & 16) > 0)
+                vertlist[4] =
+                   VertexInterp(isolevel, GetPos(x, y, z, 4), GetPos(x, y, z, 5), GetVal(x, y, z, 4), GetVal(x, y, z, 5));
+            if ((_edgeTable[cubeindex] & 32) > 0)
+                vertlist[5] =
+                   VertexInterp(isolevel, GetPos(x, y, z, 5), GetPos(x, y, z, 6), GetVal(x, y, z, 5), GetVal(x, y, z, 6));
+            if ((_edgeTable[cubeindex] & 64) > 0)
+                vertlist[6] =
+                   VertexInterp(isolevel, GetPos(x, y, z, 6), GetPos(x, y, z, 7), GetVal(x, y, z, 6), GetVal(x, y, z, 7));
+            if ((_edgeTable[cubeindex] & 128) > 0)
+                vertlist[7] =
+                   VertexInterp(isolevel, GetPos(x, y, z, 7), GetPos(x, y, z, 4), GetVal(x, y, z, 7), GetVal(x, y, z, 4));
+            if ((_edgeTable[cubeindex] & 256) > 0)
+                vertlist[8] =
+                   VertexInterp(isolevel, GetPos(x, y, z, 0), GetPos(x, y, z, 4), GetVal(x, y, z, 0), GetVal(x, y, z, 4));
+            if ((_edgeTable[cubeindex] & 512) > 0)
+                vertlist[9] =
+                   VertexInterp(isolevel, GetPos(x, y, z, 1), GetPos(x, y, z, 5), GetVal(x, y, z, 1), GetVal(x, y, z, 5));
+            if ((_edgeTable[cubeindex] & 1024) > 0)
+                vertlist[10] =
+                   VertexInterp(isolevel, GetPos(x, y, z, 2), GetPos(x, y, z, 6), GetVal(x, y, z, 2), GetVal(x, y, z, 6));
+            if ((_edgeTable[cubeindex] & 2048) > 0)
+                vertlist[11] =
+                   VertexInterp(isolevel, GetPos(x, y, z, 3), GetPos(x, y, z, 7), GetVal(x, y, z, 3), GetVal(x, y, z, 7));
+            //Ну и создаем треугольник, индексы вершин берем из _triTable, а вершины определяем по cubeindex  
+            /* Create the triangle */
+            for (i = 0; _triTable[cubeindex, i] != -1; i += 3)
             {
-                return _grids[x, y, z].P[i];
+                _triangles[ntriang].P[0] = vertlist[_triTable[cubeindex, i]];
+                _triangles[ntriang].P[1] = vertlist[_triTable[cubeindex, i + 1]];
+                _triangles[ntriang].P[2] = vertlist[_triTable[cubeindex, i + 2]];
+                ntriang++;
             }
+            return ntriang;
+        }
 
-            public static GeometricPrimitive Process(GraphicsDevice graphicsDevice, double isolevel)
+        //Просто линейная интерполяция, наверное не очень быстрая, но узкое место не здесь
+        static Vector3 VertexInterp(double isolevel, Vector3 p1, Vector3 p2, double valp1, double valp2)
+        {
+            double mu;
+            Vector3 p = new Vector3();
+
+            if (Math.Abs(isolevel - valp1) < 0.00001)
+                return p1;
+            if (Math.Abs(isolevel - valp2) < 0.00001)
+                return p2;
+            if (Math.Abs(valp1 - valp2) < 0.00001)
+                return p1;
+            mu = (isolevel - valp1) / (valp2 - valp1);
+            p.X = (float)(p1.X + mu * (p2.X - p1.X));
+            p.Y = (float)(p1.Y + mu * (p2.Y - p1.Y));
+            p.Z = (float)(p1.Z + mu * (p2.Z - p1.Z));
+
+            return p;
+        }
+
+        //Опять же все тривиально, перебираем индексы и вершины для полученных треугольников и добавляем в буфер объекта
+        static void Build(ref CubePrimitive res, int tianglesNum)
+        {
+            for (int i = 0; i < tianglesNum; i++)
             {
-                var res = new CubePrimitive();
-                Process(graphicsDevice, isolevel, ref res);
-                return res;
-            }
-            //Здесь происходит вся работа. MarchCubesPrimitive - реализация GeometricPrimitive из примера XNA. isolevel - уровень на изоповерхности.
-            public static void Process(GraphicsDevice graphicsDevice, double isolevel, ref CubePrimitive primitive)
-            {
-                //Очищаем буферы вершин и индексов
-                //primitive.Clear();
-                int triNum = 0;
-                for (int i = 0; i < _size; i++)
-                    for (int j = 0; j < _size; j++)
-                        for (int k = 0; k < _size; k++)
-                        {
-                            //Заполняем _triangles и получаем количество треугольников
-                            triNum = Polygonise(i, j, k, isolevel);
-                            if (triNum > 0)
-                            {
-                                Build(ref primitive, triNum);//А здесь заполняем буферы
-                            }
-                        }
-                if (primitive.CurrentVertex == 0) primitive.isDrawable = false;
-                else primitive.InitializePrimitive(graphicsDevice);
-            }
+                res.AddIndex(res.VertexCount + 0);
+                res.AddIndex(res.VertexCount + 1);
+                res.AddIndex(res.VertexCount + 2);
 
-            static int Polygonise(int x, int y, int z, double isolevel)
-            {
-                var vertlist = new Vector3[12];
-                int i, ntriang = 0;
-                byte cubeindex = 0;
-                //Определяем какой куб перед нами(фактически индекс в таблице)
-                if (GetVal(x, y, z, 0) > isolevel) cubeindex |= 1;
-                if (GetVal(x, y, z, 1) > isolevel) cubeindex |= 2;
-                if (GetVal(x, y, z, 2) > isolevel) cubeindex |= 4;
-                if (GetVal(x, y, z, 3) > isolevel) cubeindex |= 8;
-                if (GetVal(x, y, z, 4) > isolevel) cubeindex |= 16;
-                if (GetVal(x, y, z, 5) > isolevel) cubeindex |= 32;
-                if (GetVal(x, y, z, 6) > isolevel) cubeindex |= 64;
-                if (GetVal(x, y, z, 7) > isolevel) cubeindex |= 128;
+                //Считаем простую нормаль, для всех вершин треугольника одна
+                Vector3 normal = Vector3.Cross(_triangles[i].P[1] - _triangles[i].P[0], _triangles[i].P[2] - _triangles[i].P[0]);
 
-                /* Cube is entirely in/out of the surface */
-                if (_edgeTable[cubeindex] == 0)
-                    return 0;
-
-                //Ищем конкретные положения вершин, используя линейную интерполяцию
-                /* Find the vertices where the surface intersects the cube */
-                if ((_edgeTable[cubeindex] & 1) > 0)
-                    vertlist[0] = VertexInterp(isolevel, GetPos(x, y, z, 0), GetPos(x, y, z, 1), GetVal(x, y, z, 0), GetVal(x, y, z, 1));
-                if ((_edgeTable[cubeindex] & 2) > 0)
-                    vertlist[1] =
-                       VertexInterp(isolevel, GetPos(x, y, z, 1), GetPos(x, y, z, 2), GetVal(x, y, z, 1), GetVal(x, y, z, 2));
-                if ((_edgeTable[cubeindex] & 4) > 0)
-                    vertlist[2] =
-                       VertexInterp(isolevel, GetPos(x, y, z, 2), GetPos(x, y, z, 3), GetVal(x, y, z, 2), GetVal(x, y, z, 3));
-                if ((_edgeTable[cubeindex] & 8) > 0)
-                    vertlist[3] =
-                       VertexInterp(isolevel, GetPos(x, y, z, 3), GetPos(x, y, z, 0), GetVal(x, y, z, 3), GetVal(x, y, z, 0));
-                if ((_edgeTable[cubeindex] & 16) > 0)
-                    vertlist[4] =
-                       VertexInterp(isolevel, GetPos(x, y, z, 4), GetPos(x, y, z, 5), GetVal(x, y, z, 4), GetVal(x, y, z, 5));
-                if ((_edgeTable[cubeindex] & 32) > 0)
-                    vertlist[5] =
-                       VertexInterp(isolevel, GetPos(x, y, z, 5), GetPos(x, y, z, 6), GetVal(x, y, z, 5), GetVal(x, y, z, 6));
-                if ((_edgeTable[cubeindex] & 64) > 0)
-                    vertlist[6] =
-                       VertexInterp(isolevel, GetPos(x, y, z, 6), GetPos(x, y, z, 7), GetVal(x, y, z, 6), GetVal(x, y, z, 7));
-                if ((_edgeTable[cubeindex] & 128) > 0)
-                    vertlist[7] =
-                       VertexInterp(isolevel, GetPos(x, y, z, 7), GetPos(x, y, z, 4), GetVal(x, y, z, 7), GetVal(x, y, z, 4));
-                if ((_edgeTable[cubeindex] & 256) > 0)
-                    vertlist[8] =
-                       VertexInterp(isolevel, GetPos(x, y, z, 0), GetPos(x, y, z, 4), GetVal(x, y, z, 0), GetVal(x, y, z, 4));
-                if ((_edgeTable[cubeindex] & 512) > 0)
-                    vertlist[9] =
-                       VertexInterp(isolevel, GetPos(x, y, z, 1), GetPos(x, y, z, 5), GetVal(x, y, z, 1), GetVal(x, y, z, 5));
-                if ((_edgeTable[cubeindex] & 1024) > 0)
-                    vertlist[10] =
-                       VertexInterp(isolevel, GetPos(x, y, z, 2), GetPos(x, y, z, 6), GetVal(x, y, z, 2), GetVal(x, y, z, 6));
-                if ((_edgeTable[cubeindex] & 2048) > 0)
-                    vertlist[11] =
-                       VertexInterp(isolevel, GetPos(x, y, z, 3), GetPos(x, y, z, 7), GetVal(x, y, z, 3), GetVal(x, y, z, 7));
-                //Ну и создаем треугольник, индексы вершин берем из _triTable, а вершины определяем по cubeindex  
-                /* Create the triangle */
-                for (i = 0; _triTable[cubeindex, i] != -1; i += 3)
-                {
-                    _triangles[ntriang].P[0] = vertlist[_triTable[cubeindex, i]];
-                    _triangles[ntriang].P[1] = vertlist[_triTable[cubeindex, i + 1]];
-                    _triangles[ntriang].P[2] = vertlist[_triTable[cubeindex, i + 2]];
-                    ntriang++;
-                }
-                return ntriang;
-            }
-
-            //Просто линейная интерполяция, наверное не очень быстрая, но узкое место не здесь
-            static Vector3 VertexInterp(double isolevel, Vector3 p1, Vector3 p2, double valp1, double valp2)
-            {
-                double mu;
-                Vector3 p = new Vector3();
-
-                if (Math.Abs(isolevel - valp1) < 0.00001)
-                    return p1;
-                if (Math.Abs(isolevel - valp2) < 0.00001)
-                    return p2;
-                if (Math.Abs(valp1 - valp2) < 0.00001)
-                    return p1;
-                mu = (isolevel - valp1) / (valp2 - valp1);
-                p.X = (float)(p1.X + mu * (p2.X - p1.X));
-                p.Y = (float)(p1.Y + mu * (p2.Y - p1.Y));
-                p.Z = (float)(p1.Z + mu * (p2.Z - p1.Z));
-
-                return p;
-            }
-
-            //Опять же все тривиально, перебираем индексы и вершины для полученных треугольников и добавляем в буфер объекта
-            static void Build(ref CubePrimitive res, int tianglesNum)
-            {
-                for (int i = 0; i < tianglesNum; i++)
-                {
-                    res.AddIndex(res.VertexCount + 0);
-                    res.AddIndex(res.VertexCount + 1);
-                    res.AddIndex(res.VertexCount + 2);
-
-                    //Считаем простую нормаль, для всех вершин треугольника одна
-                    Vector3 normal = Vector3.Cross(_triangles[i].P[1] - _triangles[i].P[0], _triangles[i].P[2] - _triangles[i].P[0]);
-
-                    res.AddVertex(_triangles[i].P[0], normal);
-                    res.AddVertex(_triangles[i].P[1], normal);
-                    res.AddVertex(_triangles[i].P[2], normal);
-                }
+                res.AddVertex(_triangles[i].P[0], normal);
+                res.AddVertex(_triangles[i].P[1], normal);
+                res.AddVertex(_triangles[i].P[2], normal);
             }
         }
     }

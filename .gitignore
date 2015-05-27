@@ -4,3 +4,5 @@ BepuFluid/BepuFluid.csproj.Debug.cachefile
 BepuFluid/bin/*
 BepuFluid/obj/*
 BepuFluidContent/obj/x86/Debug/DesignTimeResolveAssemblyReferencesInput.cache
+BepuFluidContent/obj/x86/Debug/BepuFluidContent.contentproj.FileListAbsolute.txt
+BepuFluidContent/obj/x86/Debug/BepuFluidContent.contentprojResolveAssemblyReference.cache

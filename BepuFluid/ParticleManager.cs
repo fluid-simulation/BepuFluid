@@ -29,6 +29,7 @@ namespace BepuFluid
         private static float _tensionScale = 10f;
         #endregion
 
+        #region Forces
         public void Update()
         {
             Particle par1, par2;
@@ -150,6 +151,26 @@ namespace BepuFluid
         void Events_PairCreated(BEPUphysics.BroadPhaseEntries.MobileCollidables.EntityCollidable sender, BEPUphysics.BroadPhaseEntries.BroadPhaseEntry other, BEPUphysics.NarrowPhaseSystems.Pairs.NarrowPhasePair pair)
         {
             ComputeForces(sender.Entity, ((EntityCollidable)other).Entity);
+        }
+        #endregion
+
+        public double[, ,] GetParticlesGData(int xSize, int ySize, int zSize)
+        {
+            double[, ,] gdata = new double[xSize, ySize, zSize];
+
+            foreach (var par in _particles)
+            {
+                int x = (int)(par.Position.X);
+                int y = (int)(par.Position.Y);
+                int z = (int)(par.Position.Z);
+
+                if (x < xSize && y < ySize && z < zSize && x >= 0 && y >= 0 && z >= 0)
+                {                    
+                    gdata[x, y, z] += 0.5;
+                }
+            }
+
+            return gdata;
         }
 
         public Particle EmitParticle()

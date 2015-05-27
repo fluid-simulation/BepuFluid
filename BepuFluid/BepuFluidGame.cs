@@ -28,7 +28,7 @@ namespace BepuFluid
         /// Controls the viewpoint and how the user can see the world.
         /// </summary>
         public Camera Camera;
-        
+
         /// <summary>
         /// Contains the latest snapshot of the keyboard's input state.
         /// </summary>
@@ -39,7 +39,7 @@ namespace BepuFluid
         public MouseState MouseState;
 
         #region Particles
-        private ParticleManager Emitter;
+        private ParticleManager particlesManager;
         #endregion
 
         public BepuFluidGame()
@@ -85,7 +85,7 @@ namespace BepuFluid
             // Emitter
             Vector3 emitterPos = new Vector3(-2.5f, 15, 28);
             Box emitterBox = new Box(emitterPos, 3, 3, 3);
-            Emitter = new ParticleManager(space, emitterPos, emitterBox, Vector3.UnitZ * -1);
+            particlesManager = new ParticleManager(space, emitterPos, emitterBox, Vector3.UnitZ * -1);
         }
 
         /// <summary>
@@ -98,7 +98,7 @@ namespace BepuFluid
             CubeModel = Content.Load<Model>("cube");
             SphereModel = Content.Load<Model>("sphere");
 
-            var emitterBox = Emitter.Box;
+            var emitterBox = particlesManager.Box;
             Matrix emitterScaling = Matrix.CreateScale(emitterBox.Width, emitterBox.Height, emitterBox.Length);
             Components.Add(new EntityModel(emitterBox, CubeModel, emitterScaling, this));
 
@@ -146,7 +146,7 @@ namespace BepuFluid
             Box box3 = new Box(center, width, height, length);
             center.X -= 5;
             Box box4 = new Box(center, width, height, length);
-            
+
             space.Add(box1);
             space.Add(box2);
             space.Add(box3);
@@ -182,7 +182,7 @@ namespace BepuFluid
             if (MouseState.LeftButton == ButtonState.Pressed)
             {
                 for (int i = 0; i < 1; ++i)
-                Emit();
+                    Emit();
             }
 
             //Steps the simulation forward one time step.
@@ -192,7 +192,7 @@ namespace BepuFluid
         }
         private void Emit()
         {
-            var particle = Emitter.EmitParticle();
+            var particle = particlesManager.EmitParticle();
             var scaleMatrix = Matrix.CreateScale(particle.Radius);
             Components.Add(new EntityModel(particle, SphereModel, scaleMatrix, this));
         }
@@ -205,48 +205,24 @@ namespace BepuFluid
         {
             GraphicsDevice.Clear(Color.CornflowerBlue);
 
-            // TODO: Add your drawing code here
+            DrawMarchingCubes();
 
             base.Draw(gameTime);
-            DrawMarchingCubes();
         }
 
-        private double[, ,] GetGData()
-        {
-            if (gData == null)
-            {
-                var rand = new System.Random();
-                double[, ,] gdata = new double[10, 10, 10];
-                for (int x = 0; x < 10; ++x)
-                {
-                    for (int y = 0; y < 10; ++y)
-                    {
-                        for (int z = 0; z < 10; ++z)
-                        {
-                            gdata[x, y, z] = rand.NextDouble();
-                        }
-                    }
-                }
-                gData = gdata;
-            }
-
-            return gData;
-        }
-        double[, ,] gData;
         private void DrawMarchingCubes()
         {
-            var gdata = GetGData();
+            int dimSize = 32;
+            var gdata = particlesManager.GetParticlesGData(dimSize, dimSize, dimSize);
 
-            MarchingCubes.MarchingCubes.Poligonizator.Init(9, gdata, this.GraphicsDevice);
-            var primitive = MarchingCubes.MarchingCubes.Poligonizator.Process(this.GraphicsDevice, 0.6);
+            MarchingCubes.Poligonizator.Init(dimSize - 1, gdata, this.GraphicsDevice);
+            var primitive = MarchingCubes.Poligonizator.Process(this.GraphicsDevice, 0.6);
 
-           // Matrix world = BepuToXnaMatrix(Camera.WorldMatrix);
             Matrix view = BepuToXnaMatrix(Camera.ViewMatrix);
             Matrix projection = BepuToXnaMatrix(Camera.ProjectionMatrix);
-
             Matrix world = Matrix.CreateTranslation(0, 0, 0);
-           //Matrix view = Matrix.CreateLookAt(new Vector3(0, 0, 3), new Vector3(0, 0, 0), new Vector3(0, 1, 0));
-           //Matrix projection = Matrix.CreatePerspectiveFieldOfView(MathHelper.ToRadians(45), 800f / 480f, 0.01f, 100f);
+
+            //Matrix.Multiply(world, 0.07f);
 
             if (primitive.VertexCount > 0)
             {

@@ -87,7 +87,7 @@
   </ItemGroup>
   <ItemGroup>
     <Compile Include="Camera.cs" />
-    <Compile Include="Emitter.cs" />
+    <Compile Include="ParticleManager.cs" />
     <Compile Include="EntityModel.cs" />
     <Compile Include="MarchingCubes\CubePrimitive.cs" />
     <Compile Include="MarchingCubes\GeometricPrimitive.cs" />
