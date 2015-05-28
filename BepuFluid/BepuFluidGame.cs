@@ -86,6 +86,9 @@ namespace BepuFluid
             Vector3 emitterPos = new Vector3(-2.5f, 15, 28);
             Box emitterBox = new Box(emitterPos, 3, 3, 3);
             particlesManager = new ParticleManager(space, emitterPos, emitterBox, Vector3.UnitZ * -1);
+
+
+            //space.Add(new Box(new Vector3(-2, 5, 18), 8, 15, 23));
         }
 
         /// <summary>
@@ -194,7 +197,7 @@ namespace BepuFluid
         {
             var particle = particlesManager.EmitParticle();
             var scaleMatrix = Matrix.CreateScale(particle.Radius);
-            Components.Add(new EntityModel(particle, SphereModel, scaleMatrix, this));
+            //Components.Add(new EntityModel(particle, SphereModel, scaleMatrix, this));
         }
 
         /// <summary>
@@ -212,26 +215,56 @@ namespace BepuFluid
 
         private void DrawMarchingCubes()
         {
-            int dimSize = 32;
-            var gdata = particlesManager.GetParticlesGData(dimSize, dimSize, dimSize);
+            int dimSize = 64;
+            Vector3 translation = new Vector3(-7, 0, 7);
+            float xScale = (float)12  / dimSize;
+            float yScale = (float)17 / dimSize;
+            float zScale = (float)25 / dimSize;
+            Vector3 scale = new Vector3(xScale, yScale, zScale);
+            var gdata = particlesManager.GetParticlesGData(dimSize, dimSize, dimSize, translation, scale);
+            //var gdata = getRandomGdata(dimSize);
 
             MarchingCubes.Poligonizator.Init(dimSize - 1, gdata, this.GraphicsDevice);
             var primitive = MarchingCubes.Poligonizator.Process(this.GraphicsDevice, 0.6);
 
             Matrix view = BepuToXnaMatrix(Camera.ViewMatrix);
             Matrix projection = BepuToXnaMatrix(Camera.ProjectionMatrix);
-            Matrix world = Matrix.CreateTranslation(0, 0, 0);
+            //Matrix world = Matrix.CreateTranslation(0, 0, 0);
+            Matrix world = Matrix.CreateTranslation(translation.X, translation.Y, translation.Z);
+            world = Matrix.CreateScale(scale.X, scale.Y, scale.Z) * world;
+            
 
             //Matrix.Multiply(world, 0.07f);
 
             if (primitive.VertexCount > 0)
             {
                 primitive.InitializePrimitive(this.GraphicsDevice);
-                primitive.Draw(world, view, projection, Color.Red);
+                primitive.Draw(world, view, projection, Color.Blue);
             }
 
         }
 
+        private double[, ,] getRandomGdata(int dimSize)
+        {
+            double[,,] gdata = new double[dimSize, dimSize, dimSize];
+
+            var rand = new System.Random();
+            for(int x = 0; x < dimSize; ++x)
+            {
+                for (int y = 0; y < dimSize; ++y)
+                {
+                    for (int z = 0; z < dimSize; ++z)
+                    {
+                        gdata[x, y, z] = rand.NextDouble();
+                    }
+                }                
+            }
+            return gdata;
+        }
+        private Microsoft.Xna.Framework.Vector3 BepuToXnaVector(Vector3 v)
+        {
+            return new Microsoft.Xna.Framework.Vector3(v.X, v.Y, v.Z);
+        }
         private Microsoft.Xna.Framework.Matrix BepuToXnaMatrix(BEPUutilities.Matrix m)
         {
             Matrix res = new Matrix(m.M11, m.M12, m.M13, m.M14, m.M21, m.M22, m.M23, m.M24,

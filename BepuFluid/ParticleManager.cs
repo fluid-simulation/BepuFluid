@@ -154,19 +154,20 @@ namespace BepuFluid
         }
         #endregion
 
-        public double[, ,] GetParticlesGData(int xSize, int ySize, int zSize)
+        public double[, ,] GetParticlesGData(int xSize, int ySize, int zSize, Vector3 translation, Vector3 scale)
         {
             double[, ,] gdata = new double[xSize, ySize, zSize];
 
             foreach (var par in _particles)
             {
-                int x = (int)(par.Position.X);
-                int y = (int)(par.Position.Y);
-                int z = (int)(par.Position.Z);
+                Vector3 pos = par.Position - translation;
+                int x = (int)(pos.X / scale.X);
+                int y = (int)(pos.Y / scale.Y);
+                int z = (int)(pos.Z / scale.Z);
 
                 if (x < xSize && y < ySize && z < zSize && x >= 0 && y >= 0 && z >= 0)
                 {                    
-                    gdata[x, y, z] += 0.5;
+                    gdata[x, y, z] += 1.0;
                 }
             }
 

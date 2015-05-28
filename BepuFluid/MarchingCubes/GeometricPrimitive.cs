@@ -64,7 +64,8 @@ namespace BepuFluid.MarchingCubes
         public void AddIndex(int index)
         {
             if (index > ushort.MaxValue)
-                throw new ArgumentOutOfRangeException("index");
+                //throw new ArgumentOutOfRangeException("index");
+                index = ushort.MaxValue;
 
             indices.Add((ushort)index);
         }
