@@ -42,9 +42,9 @@ namespace BepuFluid
 
         #region Forces Fields
         private static float H = 1f;
-        private static float _pressureScale = 1.5f;
-        private static float _viscosityScale = 15.0f;
-        private static float _tensionScale = 60.0f;
+        private static float _pressureScale = 5.5f;
+        private static float _viscosityScale = 10.5f;
+        private static float _tensionScale = 30.0f;
         private static float _tensionThreshold = 0.0001f;
         #endregion
 
@@ -128,7 +128,7 @@ namespace BepuFluid
             if (distance > H)
                 return;
 
-            float forceX = (float)(-3 * distanceVector.X * Math.Pow(distance - H, 2))/ distance;
+            float forceX = (float)(-3 * distanceVector.X * Math.Pow(distance - H, 2)) / distance;
             float forceY = (float)(-3 * distanceVector.Y * Math.Pow(distance - H, 2)) / distance;
             float forceZ = (float)(-3 * distanceVector.Z * Math.Pow(distance - H, 2)) / distance;
 
@@ -264,6 +264,10 @@ namespace BepuFluid
 
             foreach (var par in _particles)
             {
+                double level;
+                //level = par.ColorField.Length();
+                level = 0.09;
+
                 Vector3 pos = par.Position - translation;
 
                 pos.X = pos.X / scale.X;
@@ -276,8 +280,18 @@ namespace BepuFluid
 
                 if (x < xSize && y < ySize && z < zSize && x >= 0 && y >= 0 && z >= 0)
                 {
-                    double level = par.ColorField.Length();
                     gdata[x, y, z] += level;
+                }
+
+                for (int x2 = x - 1; x2 < x + 2; ++x2)
+                {
+                    for (int z2 = z - 1; z2 < z + 2; ++z2)
+                    {
+                        if (x2 < xSize && y < ySize && z2 < zSize && x2 >= 0 && y >= 0 && z2 >= 0)
+                        {
+                            gdata[x2, y, z2] += level / 2;
+                        }
+                    }
                 }
             }
 

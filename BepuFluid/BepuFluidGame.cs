@@ -52,7 +52,7 @@ namespace BepuFluid
         {
             var particle = particleManager.EmitParticle();
             var scaleMatrix = Matrix.CreateScale(particle.Radius);
-            Components.Add(new EntityModel(particle, SphereModel, scaleMatrix, this));
+            //Components.Add(new EntityModel(particle, SphereModel, scaleMatrix, this));
         }
         #endregion
 
@@ -332,8 +332,8 @@ namespace BepuFluid
         #endregion
 
         #region MarchingCubes
-        private int DIM_SIZE = 16;
-        private double ISO_LEVEL = 0.01;
+        private int DIM_SIZE = 64;
+        private double ISO_LEVEL = 0.1;
         private Vector3 TRANSLATION = new Vector3(-7, 0, 7);
 
         private int _vertexCount = 0;
