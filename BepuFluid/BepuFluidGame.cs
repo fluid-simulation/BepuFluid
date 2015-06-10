@@ -297,7 +297,7 @@ namespace BepuFluid
             var infoList = new List<string>();
             string info;
 
-            info = "Press F1 to toggle particles' physics (Currently ";
+            info = "Press F1 to toggle particles' physics (currently ";
             info += _updateParticles ? "ON" : "OFF";
             info += ")";
             infoList.Add(info);

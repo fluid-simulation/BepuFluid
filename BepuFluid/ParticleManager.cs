@@ -168,6 +168,8 @@ namespace BepuFluid
         private List<Particle>[, ,] _grid;
         private int _gridSize = 64;
 
+        private List<int[]> _nonEmptyCells;
+
         private Vector3 _translation;
 
         private void PutParticleInGrid(Particle par)
@@ -181,7 +183,10 @@ namespace BepuFluid
                 int z = (int)pos.Z;
 
                 if (_grid[x, y, z] == null)
+                {
                     _grid[x, y, z] = new List<Particle>();
+                    _nonEmptyCells.Add(new int[] { x, y, z });
+                }
 
                 _grid[x, y, z].Add(par);
             }
@@ -191,54 +196,54 @@ namespace BepuFluid
         {
             _grid = new List<Particle>[_gridSize, _gridSize, _gridSize];
 
+            _nonEmptyCells = new List<int[]>();
+
             foreach (var par in _particles)
             {
                 PutParticleInGrid(par);
             }
 
-            for (int x = 0; x < _gridSize; ++x)
+            foreach (var cellCoord in _nonEmptyCells)
             {
-                for (int y = 0; y < _gridSize; ++y)
+                int x = cellCoord[0];
+                int y = cellCoord[1];
+                int z = cellCoord[2];
+
+                var gridCell = _grid[x, y, z];
+
+                if (gridCell == null)
+                    continue;
+
+                foreach (var par1 in gridCell)
                 {
-                    for (int z = 0; z < _gridSize; ++z)
+                    par1.ColorField = Vector3.Zero;
+                    par1.ColorFieldGradient = Vector3.Zero;
+                    par1.ColorFieldSecondGradient = Vector3.Zero;
+                    par1.ComputedForce = Vector3.Zero;
+                    par1.TensionLevel = 0;
+
+                    for (int x2 = x - 1; x2 < x + 2; ++x2)
                     {
-                        var gridCell = _grid[x, y, z];
-
-                        if (gridCell == null)
-                            continue;
-
-                        foreach (var par1 in gridCell)
+                        for (int y2 = y - 1; y2 < y + 2; ++y2)
                         {
-                            par1.ColorField = Vector3.Zero;
-                            par1.ColorFieldGradient = Vector3.Zero;
-                            par1.ColorFieldSecondGradient = Vector3.Zero;
-                            par1.ComputedForce = Vector3.Zero;
-                            par1.TensionLevel = 0;
-
-                            for (int x2 = x - 1; x2 < x + 2; ++x2)
+                            for (int z2 = z - 1; z2 < z + 2; ++z2)
                             {
-                                for (int y2 = y - 1; y2 < y + 2; ++y2)
+                                if (x2 >= 0 && x2 < _gridSize && y2 >= 0 && y2 < _gridSize && z2 >= 0 && z2 < _gridSize)
                                 {
-                                    for (int z2 = z - 1; z2 < z + 2; ++z2)
+                                    var secondCell = _grid[x2, y2, z2];
+
+                                    if (secondCell == null)
+                                        continue;
+
+                                    foreach (var par2 in secondCell)
                                     {
-                                        if (x2 >= 0 && x2 < _gridSize && y2 >= 0 && y2 < _gridSize && z2 >= 0 && z2 < _gridSize)
-                                        {
-                                            var secondCell = _grid[x2, y2, z2];
+                                        if (par1 == par2)
+                                            continue;
 
-                                            if (secondCell == null)
-                                                continue;
-
-                                            foreach (var par2 in secondCell)
-                                            {
-                                                if (par1 == par2)
-                                                    continue;
-
-                                                ComputePressure(par1, par2);
-                                                ComputeViscosity(par1, par2);
-                                                ComputeTensionGradient(par1, par2);
-                                                ComputeTensionSecondGradient(par1, par2);
-                                            }
-                                        }
+                                        ComputePressure(par1, par2);
+                                        ComputeViscosity(par1, par2);
+                                        ComputeTensionGradient(par1, par2);
+                                        ComputeTensionSecondGradient(par1, par2);
                                     }
                                 }
                             }
