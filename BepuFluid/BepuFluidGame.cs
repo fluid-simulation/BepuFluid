@@ -129,7 +129,7 @@ namespace BepuFluid
 
             center.Z -= 3;
             length = 10;
-            width = 0.1f;
+            width = 0.3f;
             Box box3 = new Box(center, width, height, length);
             center.X -= 5;
             Box box4 = new Box(center, width, height, length);
@@ -302,9 +302,17 @@ namespace BepuFluid
             info += ")";
             infoList.Add(info);
 
+            infoList.Add("");
+            infoList.Add("Particles:");
+
             if (_updateParticles)
             {
                 infoList.AddRange(particleManager.GetInfo());
+            }
+            else
+            {
+                info = "Count: " + particleManager.ParticlesCount;
+                infoList.Add(info);
             }
 
             infoList.Add("");
@@ -333,7 +341,7 @@ namespace BepuFluid
 
         #region MarchingCubes
         private int DIM_SIZE = 64;
-        private double ISO_LEVEL = 0.1;
+        private double ISO_LEVEL = 0.15;
         private Vector3 TRANSLATION = new Vector3(-7, 0, 7);
 
         private int _vertexCount = 0;

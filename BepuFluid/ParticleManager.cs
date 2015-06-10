@@ -285,16 +285,17 @@ namespace BepuFluid
 
                 if (x < xSize && y < ySize && z < zSize && x >= 0 && y >= 0 && z >= 0)
                 {
-                    gdata[x, y, z] += level;
+                    gdata[x, y, z] += level / 2;
                 }
 
-                for (int x2 = x - 1; x2 < x + 2; ++x2)
+                for (int x2 = x - 2; x2 < x + 3; ++x2)
                 {
-                    for (int z2 = z - 1; z2 < z + 2; ++z2)
+                    for (int z2 = z - 2; z2 < z + 3; ++z2)
                     {
                         if (x2 < xSize && y < ySize && z2 < zSize && x2 >= 0 && y >= 0 && z2 >= 0)
                         {
-                            gdata[x2, y, z2] += level / 2;
+                            int diff = Math.Abs(x - x2) + Math.Abs(z - z2) + 1;
+                            gdata[x2, y, z2] += level / diff ;
                         }
                     }
                 }
@@ -309,9 +310,6 @@ namespace BepuFluid
         {
             List<string> fullInfo = new List<string>();
             string info;
-
-            fullInfo.Add("");
-            fullInfo.Add("Particles:");
 
             info = "Count: " + _particles.Count;
             fullInfo.Add(info);
@@ -330,6 +328,8 @@ namespace BepuFluid
 
             return fullInfo;
         }
+
+        public int ParticlesCount { get { return _particles.Count; } }
 
         public ParticleManager(Space space, Vector3 boxPosition, Box box, Vector3 forward, Vector3 translation)
         {
