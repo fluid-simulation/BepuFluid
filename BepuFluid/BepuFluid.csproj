@@ -87,6 +87,7 @@
   </ItemGroup>
   <ItemGroup>
     <Compile Include="Camera.cs" />
+    <Compile Include="InfoDrawer.cs" />
     <Compile Include="ParticleManager.cs" />
     <Compile Include="EntityModel.cs" />
     <Compile Include="MarchingCubes\CubePrimitive.cs" />
@@ -100,6 +101,7 @@
     <Compile Include="Program.cs" />
     <Compile Include="BepuFluidGame.cs" />
     <Compile Include="Through.cs" />
+    <Compile Include="Utils\InputHelper.cs" />
   </ItemGroup>
   <ItemGroup>
     <Content Include="Game.ico" />

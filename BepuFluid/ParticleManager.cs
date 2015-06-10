@@ -341,6 +341,32 @@ namespace BepuFluid
         }
         #endregion
 
+        public List<string> GetInfo()
+        {
+            List<string> fullInfo = new List<string>();
+            string info;
+
+            fullInfo.Add("");
+            fullInfo.Add("Particles:");
+
+            info = "Count: " + _particles.Count;
+            fullInfo.Add(info);
+
+            info = "Kernel size: " + H;
+            fullInfo.Add(info);
+
+            info = "Viscosity: " + _viscosityScale;
+            fullInfo.Add(info);
+
+            info = "Pressure: " + _pressureScale;
+            fullInfo.Add(info);
+
+            info = "Tension: " + _tensionScale;
+            fullInfo.Add(info);
+
+            return fullInfo;
+        }
+
         public ParticleManager(Space space, Vector3 boxPosition, Box box, Vector3 forward, Vector3 translation)
         {
             this._space = space;

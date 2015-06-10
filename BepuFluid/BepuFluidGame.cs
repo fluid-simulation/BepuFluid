@@ -5,6 +5,8 @@ using Microsoft.Xna.Framework.Input;
 using BEPUphysics;
 using BEPUphysics.Entities;
 using Vector3 = BEPUutilities.Vector3;
+using BepuFluid.Utils;
+using System.Collections.Generic;
 
 namespace BepuFluid
 {
@@ -14,6 +16,9 @@ namespace BepuFluid
     public class BepuFluidGame : Game
     {
         GraphicsDeviceManager graphics;
+        SpriteBatch spriteBatch;
+        InfoDrawer infoDrawer;
+        InputHelper inputHelper;
 
         /// <summary>
         /// World in which the simulation runs.
@@ -39,11 +44,11 @@ namespace BepuFluid
         public MouseState MouseState;
 
         #region Particles
-        private ParticleManager particlesManager;
+        private ParticleManager particleManager;
 
         private void Emit()
         {
-            var particle = particlesManager.EmitParticle();
+            var particle = particleManager.EmitParticle();
             var scaleMatrix = Matrix.CreateScale(particle.Radius);
             //Components.Add(new EntityModel(particle, SphereModel, scaleMatrix, this));
         }
@@ -52,9 +57,11 @@ namespace BepuFluid
         public BepuFluidGame()
         {
             graphics = new GraphicsDeviceManager(this);
-            graphics.PreferredBackBufferWidth = 800;
-            graphics.PreferredBackBufferHeight = 600;
+            graphics.PreferredBackBufferWidth = 900;
+            graphics.PreferredBackBufferHeight = 675;
             Content.RootDirectory = "Content";
+
+            inputHelper = new InputHelper();
         }
 
         /// <summary>
@@ -65,7 +72,7 @@ namespace BepuFluid
         /// </summary>
         protected override void Initialize()
         {
-            Camera = new Camera(this, new Vector3(0, 6, -5), 5);
+            Camera = new Camera(this, new Vector3(0, 8, -5), 5);
 
             InitializeSpace();
 
@@ -93,7 +100,7 @@ namespace BepuFluid
             // Emitter
             Vector3 emitterPos = new Vector3(-2.5f, 15, 28);
             Box emitterBox = new Box(emitterPos, 3, 3, 3);
-            particlesManager = new ParticleManager(space, emitterPos, emitterBox, Vector3.UnitZ * -1, TRANSLATION);
+            particleManager = new ParticleManager(space, emitterPos, emitterBox, Vector3.UnitZ * -1, TRANSLATION);
         }
 
         private void AddThrough()
@@ -142,7 +149,7 @@ namespace BepuFluid
             CubeModel = Content.Load<Model>("cube");
             SphereModel = Content.Load<Model>("sphere");
 
-            var emitterBox = particlesManager.EmitterBox;
+            var emitterBox = particleManager.EmitterBox;
             Matrix emitterScaling = Matrix.CreateScale(emitterBox.Width, emitterBox.Height, emitterBox.Length);
             Components.Add(new EntityModel(emitterBox, CubeModel, emitterScaling, this));
 
@@ -160,6 +167,8 @@ namespace BepuFluid
                 }
             }
 
+            spriteBatch = new SpriteBatch(graphics.GraphicsDevice);
+            infoDrawer = new InfoDrawer(this.Content);
         }
 
         /// <summary>
@@ -178,6 +187,7 @@ namespace BepuFluid
         /// <param name="gameTime">Provides a snapshot of timing values.</param>
         protected override void Update(GameTime gameTime)
         {
+            inputHelper.Update();
             KeyboardState = Keyboard.GetState();
             MouseState = Mouse.GetState();
 
@@ -190,10 +200,36 @@ namespace BepuFluid
                     Emit();
             }
 
+            ProcessInput();
+
             //Steps the simulation forward one time step.
             space.Update();
-            particlesManager.Update();
+            particleManager.Update();
             base.Update(gameTime);
+        }
+
+        private void ProcessInput()
+        {
+
+            if (inputHelper.IsNewPress(Keys.F3))
+            {
+                infoDrawer.ToggleFullInfo();
+            }
+
+            if (inputHelper.IsNewPress(Keys.F5))
+            {
+                if (DIM_SIZE > 1)
+                {
+                    DIM_SIZE = DIM_SIZE / 2;
+                }
+            }
+            if (inputHelper.IsNewPress(Keys.F6))
+            {
+                if (DIM_SIZE < 64)
+                {
+                    DIM_SIZE = DIM_SIZE * 2;
+                }
+            }
         }
 
         /// <summary>
@@ -206,13 +242,44 @@ namespace BepuFluid
 
             DrawMarchingCubes();
 
+            spriteBatch.Begin();
+
+            var info = GetInfo();
+
+            infoDrawer.Draw(spriteBatch, info);
+
             base.Draw(gameTime);
+            spriteBatch.End();
+        }
+
+        private List<string> GetInfo()
+        {
+            var infoList = particleManager.GetInfo();
+            string info;
+
+            infoList.Add("");
+
+            info = "Marching Cubes:";
+            infoList.Add(info);
+
+            info = "Dimensions: " + DIM_SIZE + ",   F5: -  F6: +";
+            infoList.Add(info);
+
+            info = "IsoLevel: " + ISO_LEVEL;
+            infoList.Add(info);
+
+            info = "Vertex Count: " + _vertexCount;
+            infoList.Add(info);
+
+            return infoList;
         }
 
         #region MarchingCubes
-        private const int DIM_SIZE = 16;
-        private const double ISO_LEVEL = 3.6;
+        private int DIM_SIZE = 16;
+        private double ISO_LEVEL = 3.6;
         private Vector3 TRANSLATION = new Vector3(-7, 0, 7);
+
+        private int _vertexCount = 0;
 
         private void DrawMarchingCubes()
         {
@@ -220,7 +287,7 @@ namespace BepuFluid
             float yScale = (float)17 / DIM_SIZE;
             float zScale = (float)25 / DIM_SIZE;
             Vector3 scale = new Vector3(xScale, yScale, zScale);
-            var gdata = particlesManager.GetParticlesGData(DIM_SIZE, DIM_SIZE, DIM_SIZE, TRANSLATION, scale);
+            var gdata = particleManager.GetParticlesGData(DIM_SIZE, DIM_SIZE, DIM_SIZE, TRANSLATION, scale);
             //var gdata = getRandomGdata(dimSize);
 
             MarchingCubes.Poligonizator.Init(DIM_SIZE - 1, gdata, this.GraphicsDevice);
@@ -234,7 +301,7 @@ namespace BepuFluid
             
 
             //Matrix.Multiply(world, 0.07f);
-
+            _vertexCount = primitive.VertexCount;
             if (primitive.VertexCount > 0)
             {
                 primitive.InitializePrimitive(this.GraphicsDevice);
