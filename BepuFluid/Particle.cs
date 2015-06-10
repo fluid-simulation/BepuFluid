@@ -9,8 +9,14 @@ namespace BepuFluid
 {
     class Particle : Sphere
     {
-        public Vector3 TensionPartForce { get; set; }
+        public Vector3 ColorFieldGradient { get; set; }
+        public Vector3 ColorField { get; set; }
 
-        public Particle(Vector3 position, float radius, float mass) : base(position, radius, mass) { this.Tag = "particle"; }
+        public Particle(Vector3 position, float radius, float mass) : base(position, radius, mass) 
+        { 
+            this.Tag = "particle";
+            this.ColorFieldGradient = Vector3.Zero;
+            this.ColorField = Vector3.Zero;
+        }
     }
 }

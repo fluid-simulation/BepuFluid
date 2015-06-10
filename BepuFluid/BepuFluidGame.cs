@@ -40,6 +40,13 @@ namespace BepuFluid
 
         #region Particles
         private ParticleManager particlesManager;
+
+        private void Emit()
+        {
+            var particle = particlesManager.EmitParticle();
+            var scaleMatrix = Matrix.CreateScale(particle.Radius);
+            //Components.Add(new EntityModel(particle, SphereModel, scaleMatrix, this));
+        }
         #endregion
 
         public BepuFluidGame()
@@ -58,13 +65,14 @@ namespace BepuFluid
         /// </summary>
         protected override void Initialize()
         {
-            Camera = new Camera(this, new Vector3(0, 3, -5), 5);
+            Camera = new Camera(this, new Vector3(0, 6, -5), 5);
 
             InitializeSpace();
 
             base.Initialize();
         }
 
+        #region Space and Boxes
         private void InitializeSpace()
         {
             //Construct a new space for the physics simulation to occur within.
@@ -85,40 +93,7 @@ namespace BepuFluid
             // Emitter
             Vector3 emitterPos = new Vector3(-2.5f, 15, 28);
             Box emitterBox = new Box(emitterPos, 3, 3, 3);
-            particlesManager = new ParticleManager(space, emitterPos, emitterBox, Vector3.UnitZ * -1);
-
-
-            //space.Add(new Box(new Vector3(-2, 5, 18), 8, 15, 23));
-        }
-
-        /// <summary>
-        /// LoadContent will be called once per game and is the place to load
-        /// all of your content.
-        /// </summary>
-        protected override void LoadContent()
-        {
-            //This 1x1x1 cube model will represent the box entities in the space.
-            CubeModel = Content.Load<Model>("cube");
-            SphereModel = Content.Load<Model>("sphere");
-
-            var emitterBox = particlesManager.Box;
-            Matrix emitterScaling = Matrix.CreateScale(emitterBox.Width, emitterBox.Height, emitterBox.Length);
-            Components.Add(new EntityModel(emitterBox, CubeModel, emitterScaling, this));
-
-            //Go through the list of entities in the space and create a graphical representation for them.
-            foreach (Entity e in space.Entities)
-            {
-                Box box = e as Box;
-                if (box != null) //This won't create any graphics for an entity that isn't a box since the model being used is a box.
-                {
-                    Matrix scaling = Matrix.CreateScale(box.Width, box.Height, box.Length); //Since the cube model is 1x1x1, it needs to be scaled to match the size of each individual box.
-                    //Add the drawable game component for this entity to the game.
-                    var model = new EntityModel(e, CubeModel, scaling, this);
-                    model.IsOpaque = true;
-                    Components.Add(model);
-                }
-            }
-
+            particlesManager = new ParticleManager(space, emitterPos, emitterBox, Vector3.UnitZ * -1, TRANSLATION);
         }
 
         private void AddThrough()
@@ -155,6 +130,37 @@ namespace BepuFluid
             space.Add(box3);
             space.Add(box4);
         }
+        #endregion
+
+        /// <summary>
+        /// LoadContent will be called once per game and is the place to load
+        /// all of your content.
+        /// </summary>
+        protected override void LoadContent()
+        {
+            //This 1x1x1 cube model will represent the box entities in the space.
+            CubeModel = Content.Load<Model>("cube");
+            SphereModel = Content.Load<Model>("sphere");
+
+            var emitterBox = particlesManager.EmitterBox;
+            Matrix emitterScaling = Matrix.CreateScale(emitterBox.Width, emitterBox.Height, emitterBox.Length);
+            Components.Add(new EntityModel(emitterBox, CubeModel, emitterScaling, this));
+
+            //Go through the list of entities in the space and create a graphical representation for them.
+            foreach (Entity e in space.Entities)
+            {
+                Box box = e as Box;
+                if (box != null) //This won't create any graphics for an entity that isn't a box since the model being used is a box.
+                {
+                    Matrix scaling = Matrix.CreateScale(box.Width, box.Height, box.Length); //Since the cube model is 1x1x1, it needs to be scaled to match the size of each individual box.
+                    //Add the drawable game component for this entity to the game.
+                    var model = new EntityModel(e, CubeModel, scaling, this);
+                    model.IsOpaque = true;
+                    Components.Add(model);
+                }
+            }
+
+        }
 
         /// <summary>
         /// UnloadContent will be called once per game and is the place to unload
@@ -174,10 +180,6 @@ namespace BepuFluid
         {
             KeyboardState = Keyboard.GetState();
             MouseState = Mouse.GetState();
-            // Allows the game to exit
-            if (GamePad.GetState(PlayerIndex.One).Buttons.Back == ButtonState.Pressed
-                || KeyboardState.IsKeyDown(Keys.Escape))
-                Exit();
 
             //Update the camera
             Camera.Update((float)gameTime.ElapsedGameTime.TotalSeconds);
@@ -190,14 +192,8 @@ namespace BepuFluid
 
             //Steps the simulation forward one time step.
             space.Update();
-            //Emitter.Update();
+            particlesManager.Update();
             base.Update(gameTime);
-        }
-        private void Emit()
-        {
-            var particle = particlesManager.EmitParticle();
-            var scaleMatrix = Matrix.CreateScale(particle.Radius);
-            //Components.Add(new EntityModel(particle, SphereModel, scaleMatrix, this));
         }
 
         /// <summary>
@@ -213,24 +209,27 @@ namespace BepuFluid
             base.Draw(gameTime);
         }
 
+        #region MarchingCubes
+        private const int DIM_SIZE = 16;
+        private const double ISO_LEVEL = 3.6;
+        private Vector3 TRANSLATION = new Vector3(-7, 0, 7);
+
         private void DrawMarchingCubes()
         {
-            int dimSize = 64;
-            Vector3 translation = new Vector3(-7, 0, 7);
-            float xScale = (float)12  / dimSize;
-            float yScale = (float)17 / dimSize;
-            float zScale = (float)25 / dimSize;
+            float xScale = (float)12  / DIM_SIZE;
+            float yScale = (float)17 / DIM_SIZE;
+            float zScale = (float)25 / DIM_SIZE;
             Vector3 scale = new Vector3(xScale, yScale, zScale);
-            var gdata = particlesManager.GetParticlesGData(dimSize, dimSize, dimSize, translation, scale);
+            var gdata = particlesManager.GetParticlesGData(DIM_SIZE, DIM_SIZE, DIM_SIZE, TRANSLATION, scale);
             //var gdata = getRandomGdata(dimSize);
 
-            MarchingCubes.Poligonizator.Init(dimSize - 1, gdata, this.GraphicsDevice);
-            var primitive = MarchingCubes.Poligonizator.Process(this.GraphicsDevice, 0.6);
+            MarchingCubes.Poligonizator.Init(DIM_SIZE - 1, gdata, this.GraphicsDevice);
+            var primitive = MarchingCubes.Poligonizator.Process(this.GraphicsDevice, ISO_LEVEL);
 
             Matrix view = BepuToXnaMatrix(Camera.ViewMatrix);
             Matrix projection = BepuToXnaMatrix(Camera.ProjectionMatrix);
             //Matrix world = Matrix.CreateTranslation(0, 0, 0);
-            Matrix world = Matrix.CreateTranslation(translation.X, translation.Y, translation.Z);
+            Matrix world = Matrix.CreateTranslation(TRANSLATION.X, TRANSLATION.Y, TRANSLATION.Z);
             world = Matrix.CreateScale(scale.X, scale.Y, scale.Z) * world;
             
 
@@ -271,5 +270,7 @@ namespace BepuFluid
                 m.M31, m.M32, m.M33, m.M34, m.M41, m.M42, m.M43, m.M44);
             return res;
         }
+
+        #endregion
     }
 }
