@@ -7,6 +7,7 @@ using BEPUphysics.Entities;
 using Vector3 = BEPUutilities.Vector3;
 using BepuFluid.Utils;
 using System.Collections.Generic;
+using System;
 
 namespace BepuFluid
 {
@@ -244,12 +245,38 @@ namespace BepuFluid
 
             spriteBatch.Begin();
 
+            UpdateFps();
+
             var info = GetInfo();
 
             infoDrawer.Draw(spriteBatch, info);
 
             base.Draw(gameTime);
             spriteBatch.End();
+        }
+
+        #region Info Display
+        int frames = 0;
+        double fps = 0;
+        DateTime prev, now;
+
+        private void UpdateFps()
+        {
+            frames++;
+            now = DateTime.Now;
+
+            TimeSpan timeDiff = now - prev;
+            int elapsed = timeDiff.Seconds;
+
+
+            if (elapsed > 0)
+                fps = (double)frames / elapsed;
+
+            if (elapsed > 4)
+            {
+                frames = 0;
+                prev = DateTime.Now;
+            }
         }
 
         private List<string> GetInfo()
@@ -271,8 +298,15 @@ namespace BepuFluid
             info = "Vertex Count: " + _vertexCount;
             infoList.Add(info);
 
+            infoList.Add("");
+
+            info = "Frames per Second: " + fps;
+            infoList.Add(info);
+
             return infoList;
         }
+
+        #endregion
 
         #region MarchingCubes
         private int DIM_SIZE = 16;
