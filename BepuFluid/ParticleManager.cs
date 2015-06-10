@@ -18,7 +18,7 @@ namespace BepuFluid
         public Box EmitterBox { get; private set; }
         public Vector3 Position { get; private set; }
         public Vector3 Forward { get; private set; }
-        private float _particleScale = 0.1f;
+        private float _particleScale = 0.10f;
 
         private Space _space;
         private List<Particle> _particles = new List<Particle>();
@@ -42,140 +42,126 @@ namespace BepuFluid
 
         #region Forces Fields
         private static float H = 1f;
-        private static float _pressureScale = 1.1f;
-        private static float _viscosityScale = 1.1f;
-        private static float _tensionScale = 0.01f;
+        private static float _pressureScale = 1.5f;
+        private static float _viscosityScale = 15.0f;
+        private static float _tensionScale = 60.0f;
+        private static float _tensionThreshold = 0.0001f;
         #endregion
 
         #region Forces
-        public void UpdateForces()
+
+        /// <summary>
+        /// 315 / H^9 * 64 * Pi
+        /// </summary>
+        private const float POLY_KERNEL_SCALE = 315.0f / (float)(64 * Math.PI);
+
+        private void ApplyTension(Particle par)
         {
-            Particle par1, par2;
-            Vector3 [] tensionForceParts = new Vector3 [_particles.Count];
-            for (int i = 0; i < _particles.Count; ++i)
+            var tensionLevel = par.ColorFieldGradient.Length();
+            if (tensionLevel > _tensionThreshold)
             {
-                Vector3 tensionForcePart = Vector3.Zero;
-                par1 = _particles[i];
-                for (int j = 0; j < _particles.Count; j++)
-                {
-                    if (i == j)
-                        continue;
-                    par2 = _particles[j];
-                    tensionForcePart += GetTensionPart(par1, par2);
-                }
-                par1.ColorFieldGradient = tensionForcePart;
-                tensionForceParts[i] = tensionForcePart;
+                float forceX = -_tensionScale * par.ColorFieldSecondGradient.X * par.ColorFieldGradient.X / tensionLevel;
+                float forceY = -_tensionScale * par.ColorFieldSecondGradient.Y * par.ColorFieldGradient.Y / tensionLevel;
+                float forceZ = -_tensionScale * par.ColorFieldSecondGradient.Z * par.ColorFieldGradient.Z / tensionLevel;
+
+                var forceVector = new Vector3(forceX, forceY, forceZ);
+
+                par.ColorField = forceVector;
+                par.ComputedForce += forceVector;
+                par.TensionLevel = tensionLevel;
             }
-            /*
-            for (int i = 0; i < _particles.Count; ++i)
-            {
-                par1 = _particles[i];
-                for (int j = 0; j < _particles.Count; j++)
-                {
-                    if (i == j)
-                        continue;
-                    par1.LinearVelocity += -_tensionScale * par1.Mass * (tensionForceParts[i] - tensionForceParts[j]);
-                }
-            }*/
-        }
-
-        private Vector3 GetTensionPart(Entity par1, Entity par2)
-        {
-            var distanceVector = par1.Position - par2.Position;
-            var distance = Vector3.Distance(par1.Position, par2.Position);
-            if (distance > H || distance == 0)
-                return Vector3.Zero;
-
-            float forceX = (float)(-3 * distanceVector.X * distance - distanceVector.X / (2 * Math.Pow(distance, 3)) + 2 * distanceVector.X);
-            float forceY = (float)(-3 * distanceVector.Y * distance - distanceVector.Y / (2 * Math.Pow(distance, 3)) + 2 * distanceVector.Y);
-            float forceZ = (float)(-3 * distanceVector.Z * distance - distanceVector.Z / (2 * Math.Pow(distance, 3)) + 2 * distanceVector.Z);
-            var forceVector = new Vector3(forceX, forceY, forceZ);
-            //forceVector = forceVector * par2.Mass;
-            return forceVector;
-        }
-
-        private void ComputeForces(Entity par1, Entity par2)
-        {
-            ComputeViscosity(par1, par2);
-            ComputePressure(par1, par2);
-
-            //ApplyTension(par1, par2);
-        }
-
-        private void ComputePressure(Entity par1, Entity par2)
-        {
-            if (par1 == par2)
-                return;
-
-            var distanceVector = par1.Position - par2.Position;
-            var distance = Vector3.Distance(par1.Position, par2.Position);
-            if (distance > H)
-                return;
-
-            float forceX = (float)(-3 * distanceVector.X * distance - distanceVector.X / (2* Math.Pow(distance, 3)) + 2 * distanceVector.X);
-            float forceY = (float)(-3 * distanceVector.Y * distance - distanceVector.Y / (2 * Math.Pow(distance, 3)) + 2 * distanceVector.Y);
-            float forceZ = (float)(-3 * distanceVector.Z * distance - distanceVector.Z / (2 * Math.Pow(distance, 3)) + 2 * distanceVector.Z);
-            var forceVector = new Vector3(forceX, forceY, forceZ);
-            forceVector = forceVector * -_pressureScale * par2.Mass;
-            par1.LinearVelocity = par1.LinearVelocity + forceVector;
-        }
-
-        private void ComputeViscosity(Entity par1, Entity par2)
-        {
-            if (par1 == par2)
-                return;
-
-            var distanceVector = par1.Position - par2.Position;
-            var distance = Vector3.Distance(par1.Position, par2.Position);
-            if (distance > H)
-                return;
-
-            // dv * (h - r) = dv * (second gradient of W(dr))
-            float forceX = (par2.LinearVelocity.X - par1.LinearVelocity.X) * (H - distanceVector.X);
-            float forceY = (par2.LinearVelocity.Y - par1.LinearVelocity.Y) * (H - distanceVector.Y);
-            float forceZ = (par2.LinearVelocity.Z - par1.LinearVelocity.Z) * (H - distanceVector.Z);
-            var forceVector = new Vector3(forceX, forceY, forceZ);
-            forceVector = forceVector * _viscosityScale * par2.Mass;
-            par1.LinearVelocity = par1.LinearVelocity + forceVector;
         }
 
         /// <summary>
-        /// Applies previously calculated tension forces to Entities, 
-        /// if they can be cast to a Particle.
+        /// 15 / (Pi * h^6)
         /// </summary>
-        /// <param name="par1"></param>
-        /// <param name="par2"></param>
-        private void ApplyTension(Entity par1, Entity par2)
-        {
-            Particle p1 = par1 as Particle;
-            Particle p2 = par2 as Particle;
+        private const float TENSION_KERNEL_SCALE = (float)(315 / (64 * Math.PI));
 
-            // Check if both entities are a Particle
-            if (p1 != null && p2 != null)
-            {
-                p1.LinearVelocity += -_tensionScale * p1.Mass * (p1.ColorFieldGradient - p2.ColorFieldGradient);
-            }
+        private void ComputeTensionGradient(Particle par1, Particle par2)
+        {
+            if (par1 == par2)
+                return;
+
+            var distanceVector = par1.Position - par2.Position;
+            var distance = Vector3.Distance(par1.Position, par2.Position);
+            if (distance > H || distance == 0)
+                return;
+
+            float forceX = -6 * distanceVector.X * (float)Math.Pow((Math.Pow(distance, 2) - Math.Pow(H, 2)), 2);
+            float forceY = -6 * distanceVector.Y * (float)Math.Pow((Math.Pow(distance, 2) - Math.Pow(H, 2)), 2);
+            float forceZ = -6 * distanceVector.Z * (float)Math.Pow((Math.Pow(distance, 2) - Math.Pow(H, 2)), 2);
+
+            var forceVector = new Vector3(forceX, forceY, forceZ);
+            par1.ColorFieldGradient += forceVector * par2.Mass * TENSION_KERNEL_SCALE;
         }
 
-        private void ComputeTension(Entity par1, Entity par2)
+        private void ComputeTensionSecondGradient(Particle par1, Particle par2)
         {
+            if (par1 == par2)
+                return;
+
+            var distanceVector = par1.Position - par2.Position;
+            var distance = Vector3.Distance(par1.Position, par2.Position);
+            if (distance > H || distance == 0)
+                return;
+
+            float forceX = -6 * (float)((Math.Pow(distance, 2) - Math.Pow(H, 2)) * (Math.Pow(distance, 2) + 4 * Math.Pow(distanceVector.X, 2) - Math.Pow(H, 2)));
+            float forceY = -6 * (float)((Math.Pow(distance, 2) - Math.Pow(H, 2)) * (Math.Pow(distance, 2) + 4 * Math.Pow(distanceVector.Y, 2) - Math.Pow(H, 2)));
+            float forceZ = -6 * (float)((Math.Pow(distance, 2) - Math.Pow(H, 2)) * (Math.Pow(distance, 2) + 4 * Math.Pow(distanceVector.Z, 2) - Math.Pow(H, 2)));
+
+            var forceVector = new Vector3(forceX, forceY, forceZ);
+            par1.ColorFieldSecondGradient += forceVector * par2.Mass * TENSION_KERNEL_SCALE;
+        }
+
+        /// <summary>
+        /// 15 / (Pi * h^6)
+        /// </summary>
+        private const float PRESSURE_KERNEL_SCALE = (float)(15 / Math.PI);
+
+        private void ComputePressure(Particle par1, Particle par2)
+        {
+            if (par1 == par2)
+                return;
+
             var distanceVector = par1.Position - par2.Position;
             var distance = Vector3.Distance(par1.Position, par2.Position);
             if (distance > H)
                 return;
 
-            float forceX = (float)(-3 * distanceVector.X * distance - distanceVector.X / (2 * Math.Pow(distance, 3)) + 2 * distanceVector.X);
-            float forceY = (float)(-3 * distanceVector.Y * distance - distanceVector.Y / (2 * Math.Pow(distance, 3)) + 2 * distanceVector.Y);
-            float forceZ = (float)(-3 * distanceVector.Z * distance - distanceVector.Z / (2 * Math.Pow(distance, 3)) + 2 * distanceVector.Z);
+            float forceX = (float)(-3 * distanceVector.X * Math.Pow(distance - H, 2))/ distance;
+            float forceY = (float)(-3 * distanceVector.Y * Math.Pow(distance - H, 2)) / distance;
+            float forceZ = (float)(-3 * distanceVector.Z * Math.Pow(distance - H, 2)) / distance;
+
             var forceVector = new Vector3(forceX, forceY, forceZ);
-            forceVector = forceVector * -_tensionScale * par2.Mass;
-            par1.LinearVelocity = par1.LinearVelocity + forceVector;
+            forceVector = forceVector * -_pressureScale * PRESSURE_KERNEL_SCALE * par2.Mass;
+            par1.ComputedForce += forceVector;
         }
 
-        void Events_PairCreated(BEPUphysics.BroadPhaseEntries.MobileCollidables.EntityCollidable sender, BEPUphysics.BroadPhaseEntries.BroadPhaseEntry other, BEPUphysics.NarrowPhaseSystems.Pairs.NarrowPhasePair pair)
+        /// <summary>
+        /// 45 / (Pi * h^6)
+        /// </summary>
+        private const float VISCOSITY_KERNEL_SCALE = (float)(45 / Math.PI);
+
+        private void ComputeViscosity(Particle par1, Particle par2)
         {
-            ComputeForces(sender.Entity, ((EntityCollidable)other).Entity);
+            if (par1 == par2)
+                return;
+
+            var distanceVector = par1.Position - par2.Position;
+            var distance = Vector3.Distance(par1.Position, par2.Position);
+            if (distance > H)
+                return;
+
+            // dv * (h - r) = dv * (second gradient of W(dr, h))
+            float forceX = (par2.LinearVelocity.X - par1.LinearVelocity.X) * VISCOSITY_KERNEL_SCALE * (H - distanceVector.X);
+            float forceY = (par2.LinearVelocity.Y - par1.LinearVelocity.Y) * VISCOSITY_KERNEL_SCALE * (H - distanceVector.Y);
+            float forceZ = (par2.LinearVelocity.Z - par1.LinearVelocity.Z) * VISCOSITY_KERNEL_SCALE * (H - distanceVector.Z);
+
+            var forceVector = new Vector3(forceX, forceY, forceZ);
+            forceVector = forceVector * _viscosityScale * par2.Mass;
+            par1.ComputedForce += forceVector;
         }
+
         #endregion
 
         #region Grid
@@ -225,16 +211,9 @@ namespace BepuFluid
                         {
                             par1.ColorField = Vector3.Zero;
                             par1.ColorFieldGradient = Vector3.Zero;
-
-                            foreach (var par2 in gridCell)
-                            {
-                                if (par1 == par2)
-                                    continue;
-
-                                ComputePressure(par1, par2);
-                                ComputeViscosity(par1, par2);
-                                par1.ColorFieldGradient += GetTensionPart(par1, par2);
-                            }
+                            par1.ColorFieldSecondGradient = Vector3.Zero;
+                            par1.ComputedForce = Vector3.Zero;
+                            par1.TensionLevel = 0;
 
                             for (int x2 = x - 1; x2 < x + 2; ++x2)
                             {
@@ -251,9 +230,13 @@ namespace BepuFluid
 
                                             foreach (var par2 in secondCell)
                                             {
+                                                if (par1 == par2)
+                                                    continue;
+
                                                 ComputePressure(par1, par2);
                                                 ComputeViscosity(par1, par2);
-                                                par1.ColorFieldGradient += GetTensionPart(par1, par2);
+                                                ComputeTensionGradient(par1, par2);
+                                                ComputeTensionSecondGradient(par1, par2);
                                             }
                                         }
                                     }
@@ -264,61 +247,17 @@ namespace BepuFluid
                 }
             }
 
-            for (int x = 0; x < _gridSize; ++x)
+            foreach (var par in _particles)
             {
-                for (int y = 0; y < _gridSize; ++y)
-                {
-                    for (int z = 0; z < _gridSize; ++z)
-                    {
-                        var gridCell = _grid[x, y, z];
-
-                        if (gridCell == null)
-                            continue;
-
-                        foreach (var par1 in gridCell)
-                        {
-                            foreach (var par2 in gridCell)
-                            {
-                                if (par1 == par2)
-                                    continue;
-
-                                var tensionForcePart = -_tensionScale * (par1.ColorFieldGradient - par2.ColorFieldGradient);
-                                //par1.LinearVelocity += tensionForcePart;
-                                par1.ColorField += tensionForcePart;
-                            }
-
-                            for (int x2 = x - 1; x2 < x + 2; ++x2)
-                            {
-                                for (int y2 = y - 1; y2 < y + 2; ++y2)
-                                {
-                                    for (int z2 = z - 1; z2 < z + 2; ++z2)
-                                    {
-                                        if (x2 >= 0 && x2 < _gridSize && y2 >= 0 && y2 < _gridSize && z2 >= 0 && z2 < _gridSize)
-                                        {
-                                            var secondCell = _grid[x2, y2, z2];
-
-                                            if (secondCell == null)
-                                                continue;
-
-                                            foreach (var par2 in secondCell)
-                                            {
-                                                var tensionForcePart = -_tensionScale * (par1.ColorFieldGradient - par2.ColorFieldGradient);
-                                                //par1.LinearVelocity += tensionForcePart;
-                                                par1.ColorField += tensionForcePart;
-                                            }
-                                        }
-                                    }
-                                }
-                            }
-                        }
-                    }
-                }
+                ApplyTension(par);
+                par.LinearVelocity += par.ComputedForce;
             }
         }
 
         #endregion
 
         #region Marching Cubes
+
         public double[, ,] GetParticlesGData(int xSize, int ySize, int zSize, Vector3 translation, Vector3 scale)
         {
             double[, ,] gdata = new double[xSize, ySize, zSize];
@@ -326,19 +265,25 @@ namespace BepuFluid
             foreach (var par in _particles)
             {
                 Vector3 pos = par.Position - translation;
-                int x = (int)(pos.X / scale.X);
-                int y = (int)(pos.Y / scale.Y);
-                int z = (int)(pos.Z / scale.Z);
+
+                pos.X = pos.X / scale.X;
+                pos.Y = pos.Y / scale.Y;
+                pos.Z = pos.Z / scale.Z;
+
+                int x = (int)pos.X;
+                int y = (int)pos.Y;
+                int z = (int)pos.Z;
 
                 if (x < xSize && y < ySize && z < zSize && x >= 0 && y >= 0 && z >= 0)
                 {
-                    double isoLevel = par.ColorField.LengthSquared();//(par.ColorField.X + par.ColorField.Y + par.ColorField.Z) / 9;
-                    gdata[x, y, z] += isoLevel; //1.0;
+                    double level = par.ColorField.Length();
+                    gdata[x, y, z] += level;
                 }
             }
 
             return gdata;
         }
+
         #endregion
 
         public List<string> GetInfo()

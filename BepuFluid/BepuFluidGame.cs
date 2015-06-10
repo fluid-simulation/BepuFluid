@@ -46,12 +46,13 @@ namespace BepuFluid
 
         #region Particles
         private ParticleManager particleManager;
+        private bool _updateParticles = false;
 
         private void Emit()
         {
             var particle = particleManager.EmitParticle();
             var scaleMatrix = Matrix.CreateScale(particle.Radius);
-            //Components.Add(new EntityModel(particle, SphereModel, scaleMatrix, this));
+            Components.Add(new EntityModel(particle, SphereModel, scaleMatrix, this));
         }
         #endregion
 
@@ -73,7 +74,7 @@ namespace BepuFluid
         /// </summary>
         protected override void Initialize()
         {
-            Camera = new Camera(this, new Vector3(0, 8, -5), 5);
+            Camera = new Camera(this, new Vector3(0, 10, -5), 5);
 
             InitializeSpace();
 
@@ -205,7 +206,10 @@ namespace BepuFluid
 
             //Steps the simulation forward one time step.
             space.Update();
-            particleManager.Update();
+
+            if (_updateParticles)
+                particleManager.Update();
+
             base.Update(gameTime);
         }
 
@@ -230,6 +234,11 @@ namespace BepuFluid
                 {
                     DIM_SIZE = DIM_SIZE * 2;
                 }
+            }
+
+            if (inputHelper.IsNewPress(Keys.F1))
+            {
+                _updateParticles = !_updateParticles;
             }
         }
 
@@ -262,27 +271,41 @@ namespace BepuFluid
 
         private void UpdateFps()
         {
+            if (frames == 0)
+            {
+                prev = DateTime.Now;
+            }
+
             frames++;
             now = DateTime.Now;
 
             TimeSpan timeDiff = now - prev;
-            int elapsed = timeDiff.Seconds;
+            int elapsed = timeDiff.Milliseconds;
 
 
             if (elapsed > 0)
-                fps = (double)frames / elapsed;
+                fps = 1000 * (double)frames / elapsed;
 
-            if (elapsed > 4)
+            if (frames > 4)
             {
                 frames = 0;
-                prev = DateTime.Now;
             }
         }
 
         private List<string> GetInfo()
         {
-            var infoList = particleManager.GetInfo();
+            var infoList = new List<string>();
             string info;
+
+            info = "Press F1 to toggle particles' physics (Currently ";
+            info += _updateParticles ? "ON" : "OFF";
+            info += ")";
+            infoList.Add(info);
+
+            if (_updateParticles)
+            {
+                infoList.AddRange(particleManager.GetInfo());
+            }
 
             infoList.Add("");
 
@@ -310,7 +333,7 @@ namespace BepuFluid
 
         #region MarchingCubes
         private int DIM_SIZE = 16;
-        private double ISO_LEVEL = 3.6;
+        private double ISO_LEVEL = 0.01;
         private Vector3 TRANSLATION = new Vector3(-7, 0, 7);
 
         private int _vertexCount = 0;
