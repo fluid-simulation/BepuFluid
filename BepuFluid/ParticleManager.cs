@@ -34,7 +34,7 @@ namespace BepuFluid
 
             //particle.CollisionInformation.Events.PairCreated += Events_PairCreated;
 
-            PutParticleInGrid(particle);
+            //PutParticleInGrid(particle);
 
             return particle;
         }
